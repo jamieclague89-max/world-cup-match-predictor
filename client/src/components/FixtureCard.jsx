@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { TEAMS } from '../data/wc2026';
 
-function ScoreInput({ value, onChange }) {
+function ScoreInput({ value, onChange, disabled = false }) {
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const showArrows = focused || hovered;
+  const showArrows = !disabled && (focused || hovered);
 
   function increment() {
     const cur = value === '' ? -1 : parseInt(value, 10);
-    const next = Math.min(99, cur + 1);
-    onChange(String(next));
+    onChange(String(Math.min(99, cur + 1)));
   }
 
   function decrement() {
@@ -21,7 +20,7 @@ function ScoreInput({ value, onChange }) {
   return (
     <div
       className="relative flex-shrink-0"
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => !disabled && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <input
@@ -29,10 +28,11 @@ function ScoreInput({ value, onChange }) {
         min="0"
         max="99"
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => !disabled && onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder="–"
+        disabled={disabled}
         className={`score-input transition-all duration-150 ${showArrows ? 'pr-5' : ''}`}
       />
       {showArrows && (
@@ -71,6 +71,21 @@ function formatDate(dateStr) {
   });
 }
 
+// Returns true if the fixture kickoff time has passed.
+// kickoff format: "20:00 BST" — BST is UTC+1, so we compare in UTC.
+function isKickoffPassed(date, kickoff) {
+  try {
+    const [time] = kickoff.split(' ');          // "20:00"
+    const [hh, mm] = time.split(':').map(Number);
+    // BST = UTC+1, so subtract 1 hour to get UTC
+    const kickoffUTC = new Date(`${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00Z`);
+    kickoffUTC.setUTCHours(kickoffUTC.getUTCHours() - 1);
+    return Date.now() >= kickoffUTC.getTime();
+  } catch {
+    return false;
+  }
+}
+
 function Flag({ team }) {
   const code = TEAMS[team]?.code;
   if (!code) return null;
@@ -88,6 +103,8 @@ function Flag({ team }) {
 
 export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
   const { id, group, round, homeTeam, awayTeam, date, kickoff, stadium, city, simultaneous } = fixture;
+
+  const locked = isKickoffPassed(date, kickoff);
 
   const [home, setHome] = useState(prediction?.home ?? '');
   const [away, setAway] = useState(prediction?.away ?? '');
@@ -144,7 +161,11 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
             </span>
           )}
         </div>
-        {hasPrediction && (
+        {locked ? (
+          <span className="text-slate-500 text-xs font-semibold flex items-center gap-1">
+            🔒 Locked
+          </span>
+        ) : hasPrediction && (
           <span className="text-gold-400 text-xs font-semibold">✓ Saved</span>
         )}
       </div>
@@ -159,9 +180,9 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
 
         {/* Score inputs */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <ScoreInput value={home} onChange={v => handleChange('home', v)} />
+          <ScoreInput value={home} onChange={v => handleChange('home', v)} disabled={locked} />
           <span className="text-slate-500 font-bold text-lg">:</span>
-          <ScoreInput value={away} onChange={v => handleChange('away', v)} />
+          <ScoreInput value={away} onChange={v => handleChange('away', v)} disabled={locked} />
         </div>
 
         {/* Away team */}
