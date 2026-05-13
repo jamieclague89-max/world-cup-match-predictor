@@ -1,6 +1,70 @@
 import { useState, useEffect, useRef } from 'react';
 import { TEAMS } from '../data/wc2026';
 
+function ScoreInput({ value, onChange }) {
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const showArrows = focused || hovered;
+
+  function increment() {
+    const cur = value === '' ? -1 : parseInt(value, 10);
+    const next = Math.min(99, cur + 1);
+    onChange(String(next));
+  }
+
+  function decrement() {
+    const cur = value === '' ? 1 : parseInt(value, 10);
+    if (cur <= 0) return;
+    onChange(String(cur - 1));
+  }
+
+  return (
+    <div
+      className="relative flex-shrink-0"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <input
+        type="number"
+        min="0"
+        max="99"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder="–"
+        className={`score-input transition-all duration-150 ${showArrows ? 'pr-5' : ''}`}
+      />
+      {showArrows && (
+        <div className="absolute right-0.5 inset-y-0 flex flex-col justify-center gap-0 pointer-events-auto">
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); increment(); }}
+            className="flex items-center justify-center w-4 h-[22px] text-slate-400 hover:text-gold-400
+                       hover:bg-pitch-600 rounded transition-colors leading-none select-none"
+            tabIndex={-1}
+          >
+            <svg width="8" height="5" viewBox="0 0 8 5" fill="currentColor">
+              <path d="M4 0L8 5H0L4 0Z"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); decrement(); }}
+            className="flex items-center justify-center w-4 h-[22px] text-slate-400 hover:text-gold-400
+                       hover:bg-pitch-600 rounded transition-colors leading-none select-none"
+            tabIndex={-1}
+          >
+            <svg width="8" height="5" viewBox="0 0 8 5" fill="currentColor">
+              <path d="M4 5L0 0H8L4 5Z"/>
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatDate(dateStr) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -95,23 +159,9 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
 
         {/* Score inputs */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <input
-            type="number"
-            min="0" max="99"
-            value={home}
-            onChange={e => handleChange('home', e.target.value)}
-            placeholder="–"
-            className="score-input"
-          />
+          <ScoreInput value={home} onChange={v => handleChange('home', v)} />
           <span className="text-slate-500 font-bold text-lg">:</span>
-          <input
-            type="number"
-            min="0" max="99"
-            value={away}
-            onChange={e => handleChange('away', e.target.value)}
-            placeholder="–"
-            className="score-input"
-          />
+          <ScoreInput value={away} onChange={v => handleChange('away', v)} />
         </div>
 
         {/* Away team */}
