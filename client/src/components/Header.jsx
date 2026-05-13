@@ -4,6 +4,7 @@ export default function Header({ user, activeTab, setActiveTab, onLogout }) {
     { id: 'knockout',    label: '⚔️ Knockout' },
     { id: 'league',      label: '🏅 My League' },
     { id: 'rules',       label: '📖 Rules' },
+    { id: 'leaderboard', label: '🌍 Leaderboard' },
     { id: 'admin',       label: '⚙️ Admin' },
   ];
 

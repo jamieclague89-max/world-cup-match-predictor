@@ -132,6 +132,73 @@ app.get('/api/leagues/:code/standings', (req, res) => {
   res.json({ league: { code: league.code, name: league.name }, standings });
 });
 
+// ── Scoring helper (5/3/1 system) ───────────────────────────────────────────
+function calcScore(predictions, results) {
+  let points = 0, exact = 0, correct = 0, gdiff = 0;
+  Object.entries(results).forEach(([matchId, result]) => {
+    const pred = predictions[matchId];
+    if (!pred || pred.home === '' || pred.away === '') return;
+    const ph = parseInt(pred.home, 10), pa = parseInt(pred.away, 10);
+    const ah = parseInt(result.home, 10), aa = parseInt(result.away, 10);
+    if (ph === ah && pa === aa) { points += 5; exact++; return; }
+    const predOutcome = Math.sign(ph - pa), actOutcome = Math.sign(ah - aa);
+    if (predOutcome === actOutcome) { points += 3; correct++; return; }
+    if ((ph - pa) === (ah - aa)) { points += 1; gdiff++; }
+  });
+  return { points, exact, correct, gdiff };
+}
+
+// ── Public leaderboard ───────────────────────────────────────────────────────
+
+// Register / update participant
+app.post('/api/leaderboard', (req, res) => {
+  const { name, country, predictions } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  const db = read();
+  const lb = db.leaderboard;
+  const existing = lb.participants.find(p => p.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    existing.country = country || existing.country;
+    existing.predictions = predictions || existing.predictions;
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    lb.participants.push({
+      name,
+      country: country || '',
+      predictions: predictions || {},
+      joinedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  write(db);
+  res.json({ message: existing ? 'Updated' : 'Registered' });
+});
+
+// Get leaderboard standings
+app.get('/api/leaderboard', (req, res) => {
+  const db = read();
+  const { participants, results } = db.leaderboard;
+  const standings = participants.map(p => {
+    const predCount = Object.values(p.predictions).filter(v => v.home !== '' || v.away !== '').length;
+    const score = calcScore(p.predictions, results);
+    return { name: p.name, country: p.country, predicted: predCount, ...score };
+  });
+  standings.sort((a, b) => b.points - a.points || b.exact - a.exact || b.predicted - a.predicted);
+  res.json({ standings, resultsCount: Object.keys(results).length });
+});
+
+// Set global results (admin only)
+app.post('/api/leaderboard/results', (req, res) => {
+  const { results, adminKey } = req.body;
+  if (adminKey !== (process.env.ADMIN_KEY || 'wc2026admin')) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const db = read();
+  db.leaderboard.results = { ...db.leaderboard.results, ...results };
+  write(db);
+  res.json({ message: 'Results updated', total: Object.keys(db.leaderboard.results).length });
+});
+
 // Catch-all for production SPA routing
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (_, res) => res.sendFile(path.join(__dirname, '../client/dist/index.html')));
