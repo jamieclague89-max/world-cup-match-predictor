@@ -1,6 +1,6 @@
 export default function Header({ user, activeTab, setActiveTab, onLogout }) {
   const tabs = [
-    { id: 'predictions', label: '📋 Predictions' },
+    { id: 'predictions', label: '📋 Group Stage' },
     { id: 'knockout',    label: '⚔️ Knockout' },
     { id: 'league',      label: '🏅 My League' },
     { id: 'rules',       label: '📖 Rules' },
