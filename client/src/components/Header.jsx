@@ -3,6 +3,7 @@ export default function Header({ user, activeTab, setActiveTab, onLogout }) {
     { id: 'predictions', label: '📋 Predictions' },
     { id: 'knockout',    label: '⚔️ Knockout' },
     { id: 'league',      label: '🏅 My League' },
+    { id: 'rules',       label: '📖 Rules' },
     { id: 'admin',       label: '⚙️ Admin' },
   ];
 

@@ -7,6 +7,7 @@ import FixtureList from './components/FixtureList';
 import KnockoutBracket from './components/KnockoutBracket';
 import LeagueManager from './components/LeagueManager';
 import AdminPage from './components/AdminPage';
+import RulesPage from './components/RulesPage';
 
 export default function App() {
   const [user, setUser] = useLocalStorage('wc2026_user', null);
@@ -36,6 +37,7 @@ export default function App() {
         )}
         {activeTab === 'knockout' && <KnockoutBracket />}
         {activeTab === 'league' && <LeagueManager user={user} predictions={predictions} />}
+        {activeTab === 'rules' && <RulesPage />}
         {activeTab === 'admin' && <AdminPage />}
       </main>
     </div>
