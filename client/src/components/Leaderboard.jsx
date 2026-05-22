@@ -82,7 +82,8 @@ function LeaderboardTable({ standings, currentUser }) {
       <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500 border-t border-pitch-700 pt-3">
         <span><span className="text-gold-400 font-bold">Exact</span> — correct scoreline (5 pts)</span>
         <span><span className="text-slate-300 font-bold">Result</span> — right outcome (3 pts)</span>
-        <span>Goal diff match = 1 pt</span>
+        <span><span className="text-gold-400 font-bold">⚽ Scorer</span> — first goalscorer (3 pts)</span>
+        <span>Goal diff = 1 pt</span>
         <span className="text-slate-600">Points update as official results are entered</span>
       </div>
     </div>
