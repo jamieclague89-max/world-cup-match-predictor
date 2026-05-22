@@ -39,8 +39,7 @@ function LeaderboardTable({ standings, currentUser }) {
             <th className="text-left py-2.5 pr-3 w-10">Rank</th>
             <th className="text-left py-2.5 pr-3">Player</th>
             <th className="text-left py-2.5 pr-3 hidden sm:table-cell">Country</th>
-            <th className="text-right py-2.5 pr-3 hidden md:table-cell">Predicted</th>
-            <th className="text-right py-2.5 pr-3">
+            <th className="text-right py-2.5 pr-3 hidden sm:table-cell">
               <span className="text-gold-400">Exact</span>
             </th>
             <th className="text-right py-2.5 pr-3 hidden sm:table-cell">Result</th>
@@ -69,8 +68,7 @@ function LeaderboardTable({ standings, currentUser }) {
                   </span>
                 </td>
                 <td className="py-3 pr-3 text-slate-400 hidden sm:table-cell">{entry.country}</td>
-                <td className="py-3 pr-3 text-right text-slate-500 hidden md:table-cell">{entry.predicted}/72</td>
-                <td className="py-3 pr-3 text-right text-gold-400 font-bold">{entry.exact}</td>
+                <td className="py-3 pr-3 text-right text-gold-400 font-bold hidden sm:table-cell">{entry.exact}</td>
                 <td className="py-3 pr-3 text-right text-slate-300 hidden sm:table-cell">{entry.correct}</td>
                 <td className="py-3 text-right font-black text-gold-400 text-base">{entry.points}</td>
               </tr>
@@ -152,13 +150,10 @@ export default function Leaderboard({ user, predictions }) {
     }
   }
 
-  const predictedCount = Object.values(predictions).filter(
-    p => p && (p.home !== '' || p.away !== '')
-  ).length;
-
-  const myRank = standings.findIndex(
+  const myEntry = standings.find(
     s => s.name.toLowerCase() === user.name.toLowerCase()
   );
+  const myRank = myEntry ? standings.indexOf(myEntry) : -1;
 
   const lastSyncedLabel = lastSynced
     ? new Date(lastSynced).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
@@ -194,36 +189,35 @@ export default function Leaderboard({ user, predictions }) {
             <div>
               <p className="text-white font-bold">Join the public leaderboard</p>
               <p className="text-slate-400 text-sm mt-0.5">
-                Share your predictions publicly and compete with everyone.
-                You have <span className="text-gold-400 font-semibold">{predictedCount}/72</span> predictions entered.
+                Submit your predictions and compete with everyone. Points are awarded automatically as match results come in.
               </p>
             </div>
             <button
               onClick={handleJoin}
-              disabled={syncing || predictedCount === 0}
+              disabled={syncing}
               className="btn-primary text-sm py-2 px-5 flex-shrink-0 disabled:opacity-50"
             >
               {syncing ? 'Joining…' : 'Join Leaderboard'}
             </button>
           </div>
-          {predictedCount === 0 && (
-            <p className="text-slate-500 text-xs mt-3">
-              Enter at least one prediction in the Group Stage tab first.
-            </p>
-          )}
         </div>
       ) : (
         <div className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p className="text-white font-semibold text-sm">
-              {myRank >= 0 ? (
-                <>You are <span className="text-gold-400 font-black">#{myRank + 1}</span> on the leaderboard</>
-              ) : (
-                'You are on the leaderboard'
-              )}
-            </p>
+            {myRank >= 0 ? (
+              <p className="text-white font-semibold text-sm">
+                You are <span className="text-gold-400 font-black">#{myRank + 1}</span>
+                {standings.length > 1 && (
+                  <span className="text-slate-400 font-normal"> of {standings.length}</span>
+                )}
+                {myEntry && resultsCount > 0 && (
+                  <span className="text-slate-400 font-normal"> · <span className="text-gold-400 font-bold">{myEntry.points} pts</span></span>
+                )}
+              </p>
+            ) : (
+              <p className="text-white font-semibold text-sm">You are on the leaderboard</p>
+            )}
             <p className="text-slate-500 text-xs mt-0.5">
-              {predictedCount}/72 predictions ·{' '}
               {lastSyncedLabel ? `Last synced ${lastSyncedLabel}` : 'Not yet synced'}
             </p>
           </div>
