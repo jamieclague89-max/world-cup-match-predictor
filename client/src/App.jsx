@@ -21,8 +21,8 @@ export default function App() {
     [overrides]
   );
 
-  function handleSavePrediction(matchId, home, away) {
-    setPredictions(prev => ({ ...prev, [matchId]: { home, away } }));
+  function handleSavePrediction(matchId, home, away, scorer = '') {
+    setPredictions(prev => ({ ...prev, [matchId]: { home, away, scorer } }));
   }
 
   if (!user) {

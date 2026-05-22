@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { TEAMS } from '../data/wc2026';
+import { SQUADS } from '../data/squads';
+
+const POS_ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 
 function ScoreInput({ value, onChange, disabled = false }) {
   const [focused, setFocused] = useState(false);
@@ -108,6 +111,7 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
 
   const [home, setHome] = useState(prediction?.home ?? '');
   const [away, setAway] = useState(prediction?.away ?? '');
+  const [scorer, setScorer] = useState(prediction?.scorer ?? '');
   const saveTimer = useRef(null);
   const saved = useRef(false);
 
@@ -115,7 +119,15 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
   useEffect(() => {
     setHome(prediction?.home ?? '');
     setAway(prediction?.away ?? '');
-  }, [prediction?.home, prediction?.away]);
+    setScorer(prediction?.scorer ?? '');
+  }, [prediction?.home, prediction?.away, prediction?.scorer]);
+
+  function save(h, a, s) {
+    if (h !== '' || a !== '') {
+      onSavePrediction(id, h, a, s);
+      saved.current = true;
+    }
+  }
 
   function handleChange(side, raw) {
     const val = raw === '' ? '' : Math.max(0, Math.min(99, parseInt(raw, 10)));
@@ -124,18 +136,28 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
     if (side === 'home') setHome(v);
     else setAway(v);
 
-    // Debounce save
     clearTimeout(saveTimer.current);
     saved.current = false;
     saveTimer.current = setTimeout(() => {
       const h = side === 'home' ? v : home;
       const a = side === 'away' ? v : away;
-      if (h !== '' || a !== '') {
-        onSavePrediction(id, h, a);
-        saved.current = true;
-      }
+      save(h, a, scorer);
     }, 400);
   }
+
+  function handleScorerChange(val) {
+    setScorer(val);
+    // Save immediately alongside existing scores
+    save(home, away, val);
+  }
+
+  // Build sorted squad lists for both teams
+  const homeSquad = (SQUADS[homeTeam] || []).slice().sort(
+    (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]
+  );
+  const awaySquad = (SQUADS[awayTeam] || []).slice().sort(
+    (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]
+  );
 
   const hasPrediction = home !== '' && away !== '';
   const groupColor = {
@@ -190,6 +212,54 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
           <span className="text-white font-bold text-sm sm:text-base truncate text-right">{awayTeam}</span>
           <Flag team={awayTeam} />
         </div>
+      </div>
+
+      {/* First goalscorer picker */}
+      <div className="mt-3 pt-3 border-t border-pitch-700">
+        <label className="block text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">
+          ⚽ First Goalscorer <span className="normal-case font-normal text-slate-600">(optional · +3 pts)</span>
+        </label>
+        <div className="relative">
+          <select
+            value={scorer}
+            onChange={e => !locked && handleScorerChange(e.target.value)}
+            disabled={locked}
+            className={`w-full appearance-none rounded-lg border px-3 py-2 pr-8 text-sm transition-colors
+              bg-pitch-900 focus:outline-none
+              ${locked
+                ? 'border-pitch-700 text-slate-600 cursor-not-allowed'
+                : scorer
+                  ? 'border-gold-500/60 text-white focus:border-gold-400'
+                  : 'border-pitch-600 text-slate-400 hover:border-pitch-500 focus:border-gold-400'
+              }`}
+          >
+            <option value="">— No prediction —</option>
+            {homeSquad.length > 0 && (
+              <optgroup label={`🏠 ${homeTeam}`}>
+                {homeSquad.map(p => (
+                  <option key={`h-${p.name}`} value={p.name}>
+                    {p.pos} · {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {awaySquad.length > 0 && (
+              <optgroup label={`✈️ ${awayTeam}`}>
+                {awaySquad.map(p => (
+                  <option key={`a-${p.name}`} value={p.name}>
+                    {p.pos} · {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▼</span>
+        </div>
+        {scorer && !locked && (
+          <p className="text-xs text-gold-500 mt-1">
+            🎯 {scorer}
+          </p>
+        )}
       </div>
 
       {/* Match info */}
