@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const API = '/api';
 
-async function apiFetch(path, options) {
+async function apiFetch(path) {
   const res = await fetch(API + path, {
     headers: { 'Content-Type': 'application/json' },
-    ...options,
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Request failed');
@@ -25,7 +24,7 @@ function LeaderboardTable({ standings, currentUser }) {
       <div className="text-center py-12 text-slate-500">
         <p className="text-4xl mb-3">🌍</p>
         <p className="font-semibold text-slate-400">No entries yet</p>
-        <p className="text-sm mt-1">Visit this tab after making predictions to appear here.</p>
+        <p className="text-sm mt-1">Players will appear here once they have made predictions.</p>
       </div>
     );
   }
@@ -86,13 +85,12 @@ function LeaderboardTable({ standings, currentUser }) {
   );
 }
 
-export default function Leaderboard({ user, predictions }) {
+export default function Leaderboard({ user }) {
   const [standings, setStandings] = useState([]);
   const [resultsCount, setResultsCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState('');
-  const hasSynced = useRef(false);
 
   const fetchStandings = useCallback(async () => {
     setLoading(true);
@@ -109,27 +107,12 @@ export default function Leaderboard({ user, predictions }) {
     }
   }, []);
 
-  // On mount: silently push this user's predictions, then load standings
+  // Load on mount
   useEffect(() => {
-    async function registerAndFetch() {
-      if (!hasSynced.current) {
-        hasSynced.current = true;
-        try {
-          await apiFetch('/leaderboard', {
-            method: 'POST',
-            body: JSON.stringify({ name: user.name, country: user.country, predictions }),
-          });
-        } catch {
-          // silently ignore — still show whatever standings exist
-        }
-      }
-      await fetchStandings();
-    }
-    registerAndFetch();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchStandings();
+  }, [fetchStandings]);
 
-  // Auto-refresh every 60 seconds while the tab is open
+  // Auto-refresh every 60 seconds
   useEffect(() => {
     const id = setInterval(fetchStandings, 60_000);
     return () => clearInterval(id);
@@ -170,24 +153,24 @@ export default function Leaderboard({ user, predictions }) {
         </button>
       </div>
 
-      {/* Your position card — only shown once there are results */}
+      {/* Your position — shown once results exist */}
       {myRank && resultsCount > 0 && (
-        <div className="card flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{myRank <= 3 ? MEDALS[myRank - 1] : `#${myRank}`}</span>
-            <div>
-              <p className="text-white font-semibold text-sm">
-                Your position: <span className="text-gold-400 font-black">#{myRank}</span>
-                {standings.length > 1 && (
-                  <span className="text-slate-400 font-normal"> of {standings.length}</span>
-                )}
-              </p>
-              <p className="text-slate-500 text-xs mt-0.5">
-                <span className="text-gold-400 font-bold">{myEntry.points} pts</span>
-                {myEntry.exact > 0 && ` · ${myEntry.exact} exact score${myEntry.exact !== 1 ? 's' : ''}`}
-                {myEntry.correct > 0 && ` · ${myEntry.correct} correct result${myEntry.correct !== 1 ? 's' : ''}`}
-              </p>
-            </div>
+        <div className="card flex items-center gap-4">
+          <span className="text-2xl flex-shrink-0">
+            {myRank <= 3 ? MEDALS[myRank - 1] : `#${myRank}`}
+          </span>
+          <div>
+            <p className="text-white font-semibold text-sm">
+              Your position: <span className="text-gold-400 font-black">#{myRank}</span>
+              {standings.length > 1 && (
+                <span className="text-slate-400 font-normal"> of {standings.length}</span>
+              )}
+            </p>
+            <p className="text-slate-500 text-xs mt-0.5">
+              <span className="text-gold-400 font-bold">{myEntry.points} pts</span>
+              {myEntry.exact > 0 && ` · ${myEntry.exact} exact score${myEntry.exact !== 1 ? 's' : ''}`}
+              {myEntry.correct > 0 && ` · ${myEntry.correct} correct result${myEntry.correct !== 1 ? 's' : ''}`}
+            </p>
           </div>
         </div>
       )}
@@ -198,7 +181,7 @@ export default function Leaderboard({ user, predictions }) {
         </p>
       )}
 
-      {/* Leaderboard table */}
+      {/* Standings table */}
       <div className="card">
         {loading && standings.length === 0 ? (
           <div className="text-center py-10 text-slate-500">Loading…</div>
