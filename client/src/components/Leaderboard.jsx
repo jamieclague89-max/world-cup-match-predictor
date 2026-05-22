@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const API = '/api';
 
@@ -26,7 +25,7 @@ function LeaderboardTable({ standings, currentUser }) {
       <div className="text-center py-12 text-slate-500">
         <p className="text-4xl mb-3">🌍</p>
         <p className="font-semibold text-slate-400">No entries yet</p>
-        <p className="text-sm mt-1">Be the first to join the leaderboard!</p>
+        <p className="text-sm mt-1">Visit this tab after making predictions to appear here.</p>
       </div>
     );
   }
@@ -82,20 +81,18 @@ function LeaderboardTable({ standings, currentUser }) {
         <span><span className="text-slate-300 font-bold">Result</span> — right outcome (3 pts)</span>
         <span><span className="text-gold-400 font-bold">⚽ Scorer</span> — first goalscorer (3 pts)</span>
         <span>Goal diff = 1 pt</span>
-        <span className="text-slate-600">Points update as official results are entered</span>
       </div>
     </div>
   );
 }
 
 export default function Leaderboard({ user, predictions }) {
-  const [joined, setJoined] = useLocalStorage('wc2026_lb_joined', false);
   const [standings, setStandings] = useState([]);
   const [resultsCount, setResultsCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useLocalStorage('wc2026_lb_synced', null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState('');
+  const hasSynced = useRef(false);
 
   const fetchStandings = useCallback(async () => {
     setLoading(true);
@@ -104,6 +101,7 @@ export default function Leaderboard({ user, predictions }) {
       const data = await apiFetch('/leaderboard');
       setStandings(data.standings);
       setResultsCount(data.resultsCount);
+      setLastUpdated(new Date());
     } catch (e) {
       setError('Could not load leaderboard. Make sure the server is running.');
     } finally {
@@ -111,52 +109,39 @@ export default function Leaderboard({ user, predictions }) {
     }
   }, []);
 
+  // On mount: silently push this user's predictions, then load standings
   useEffect(() => {
-    fetchStandings();
+    async function registerAndFetch() {
+      if (!hasSynced.current) {
+        hasSynced.current = true;
+        try {
+          await apiFetch('/leaderboard', {
+            method: 'POST',
+            body: JSON.stringify({ name: user.name, country: user.country, predictions }),
+          });
+        } catch {
+          // silently ignore — still show whatever standings exist
+        }
+      }
+      await fetchStandings();
+    }
+    registerAndFetch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-refresh every 60 seconds while the tab is open
+  useEffect(() => {
+    const id = setInterval(fetchStandings, 60_000);
+    return () => clearInterval(id);
   }, [fetchStandings]);
-
-  async function handleJoin() {
-    setSyncing(true);
-    setError('');
-    try {
-      await apiFetch('/leaderboard', {
-        method: 'POST',
-        body: JSON.stringify({ name: user.name, country: user.country, predictions }),
-      });
-      setJoined(true);
-      setLastSynced(new Date().toISOString());
-      await fetchStandings();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  async function handleSync() {
-    setSyncing(true);
-    setError('');
-    try {
-      await apiFetch('/leaderboard', {
-        method: 'POST',
-        body: JSON.stringify({ name: user.name, country: user.country, predictions }),
-      });
-      setLastSynced(new Date().toISOString());
-      await fetchStandings();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   const myEntry = standings.find(
     s => s.name.toLowerCase() === user.name.toLowerCase()
   );
-  const myRank = myEntry ? standings.indexOf(myEntry) : -1;
+  const myRank = myEntry ? standings.indexOf(myEntry) + 1 : null;
 
-  const lastSyncedLabel = lastSynced
-    ? new Date(lastSynced).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+  const lastUpdatedLabel = lastUpdated
+    ? lastUpdated.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
     : null;
 
   return (
@@ -167,10 +152,13 @@ export default function Leaderboard({ user, predictions }) {
         <div>
           <h2 className="text-xl font-black text-white">🌍 Public Leaderboard</h2>
           <p className="text-slate-400 text-xs mt-0.5">
-            {standings.length} {standings.length === 1 ? 'player' : 'players'} ·{' '}
-            {resultsCount === 0
-              ? 'Awaiting official results'
-              : `${resultsCount} result${resultsCount !== 1 ? 's' : ''} recorded`}
+            {standings.length} {standings.length === 1 ? 'player' : 'players'}
+            {resultsCount > 0
+              ? ` · ${resultsCount} result${resultsCount !== 1 ? 's' : ''} recorded`
+              : ' · Awaiting official results'}
+            {lastUpdatedLabel && (
+              <span className="text-slate-600"> · Updated {lastUpdatedLabel}</span>
+            )}
           </p>
         </div>
         <button
@@ -182,52 +170,25 @@ export default function Leaderboard({ user, predictions }) {
         </button>
       </div>
 
-      {/* Your status card */}
-      {!joined ? (
-        <div className="card border-gold-500/30 bg-gold-500/5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Your position card — only shown once there are results */}
+      {myRank && resultsCount > 0 && (
+        <div className="card flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{myRank <= 3 ? MEDALS[myRank - 1] : `#${myRank}`}</span>
             <div>
-              <p className="text-white font-bold">Join the public leaderboard</p>
-              <p className="text-slate-400 text-sm mt-0.5">
-                Submit your predictions and compete with everyone. Points are awarded automatically as match results come in.
-              </p>
-            </div>
-            <button
-              onClick={handleJoin}
-              disabled={syncing}
-              className="btn-primary text-sm py-2 px-5 flex-shrink-0 disabled:opacity-50"
-            >
-              {syncing ? 'Joining…' : 'Join Leaderboard'}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            {myRank >= 0 ? (
               <p className="text-white font-semibold text-sm">
-                You are <span className="text-gold-400 font-black">#{myRank + 1}</span>
+                Your position: <span className="text-gold-400 font-black">#{myRank}</span>
                 {standings.length > 1 && (
                   <span className="text-slate-400 font-normal"> of {standings.length}</span>
                 )}
-                {myEntry && resultsCount > 0 && (
-                  <span className="text-slate-400 font-normal"> · <span className="text-gold-400 font-bold">{myEntry.points} pts</span></span>
-                )}
               </p>
-            ) : (
-              <p className="text-white font-semibold text-sm">You are on the leaderboard</p>
-            )}
-            <p className="text-slate-500 text-xs mt-0.5">
-              {lastSyncedLabel ? `Last synced ${lastSyncedLabel}` : 'Not yet synced'}
-            </p>
+              <p className="text-slate-500 text-xs mt-0.5">
+                <span className="text-gold-400 font-bold">{myEntry.points} pts</span>
+                {myEntry.exact > 0 && ` · ${myEntry.exact} exact score${myEntry.exact !== 1 ? 's' : ''}`}
+                {myEntry.correct > 0 && ` · ${myEntry.correct} correct result${myEntry.correct !== 1 ? 's' : ''}`}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="btn-secondary text-sm py-1.5 px-4 flex-shrink-0"
-          >
-            {syncing ? 'Syncing…' : '↑ Sync My Predictions'}
-          </button>
         </div>
       )}
 
@@ -248,7 +209,7 @@ export default function Leaderboard({ user, predictions }) {
 
       {resultsCount === 0 && (
         <p className="text-center text-slate-600 text-xs">
-          The leaderboard will show live points once match results start being recorded after kick-off.
+          Points will appear here automatically once the first match results are confirmed.
         </p>
       )}
     </div>
