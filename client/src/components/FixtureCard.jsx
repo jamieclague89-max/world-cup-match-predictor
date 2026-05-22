@@ -115,11 +115,34 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
   const saveTimer = useRef(null);
   const saved = useRef(false);
 
+  // Derive which team the saved scorer belongs to (for restoring team selection on load)
+  function inferScorerTeam(name, hSquad, aSquad) {
+    if (!name) return '';
+    if (hSquad.some(p => p.name === name)) return 'home';
+    if (aSquad.some(p => p.name === name)) return 'away';
+    return '';
+  }
+
+  // Build sorted squad lists
+  const homeSquad = (SQUADS[homeTeam] || []).slice().sort(
+    (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]
+  );
+  const awaySquad = (SQUADS[awayTeam] || []).slice().sort(
+    (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]
+  );
+
+  const [scorerTeam, setScorerTeam] = useState(
+    () => inferScorerTeam(prediction?.scorer ?? '', homeSquad, awaySquad)
+  );
+
   // Sync if prediction changes externally (e.g. on load)
   useEffect(() => {
     setHome(prediction?.home ?? '');
     setAway(prediction?.away ?? '');
-    setScorer(prediction?.scorer ?? '');
+    const s = prediction?.scorer ?? '';
+    setScorer(s);
+    setScorerTeam(inferScorerTeam(s, homeSquad, awaySquad));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prediction?.home, prediction?.away, prediction?.scorer]);
 
   function save(h, a, s) {
@@ -147,17 +170,28 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
 
   function handleScorerChange(val) {
     setScorer(val);
-    // Save immediately alongside existing scores
     save(home, away, val);
   }
 
-  // Build sorted squad lists for both teams
-  const homeSquad = (SQUADS[homeTeam] || []).slice().sort(
-    (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]
-  );
-  const awaySquad = (SQUADS[awayTeam] || []).slice().sort(
-    (a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]
-  );
+  function handleTeamSelect(side) {
+    if (locked) return;
+    if (scorerTeam === side) {
+      // Clicking the active team deselects and clears scorer
+      setScorerTeam('');
+      setScorer('');
+      save(home, away, '');
+    } else {
+      setScorerTeam(side);
+      // Clear scorer only if it belonged to the other team
+      const newSquad = side === 'home' ? homeSquad : awaySquad;
+      if (scorer && !newSquad.some(p => p.name === scorer)) {
+        setScorer('');
+        save(home, away, '');
+      }
+    }
+  }
+
+  const activeSquad = scorerTeam === 'home' ? homeSquad : scorerTeam === 'away' ? awaySquad : [];
 
   const hasPrediction = home !== '' && away !== '';
   const groupColor = {
@@ -216,48 +250,77 @@ export default function FixtureCard({ fixture, prediction, onSavePrediction }) {
 
       {/* First goalscorer picker */}
       <div className="mt-3 pt-3 border-t border-pitch-700">
-        <label className="block text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">
+        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-2">
           ⚽ First Goalscorer <span className="normal-case font-normal text-slate-600">(optional · +3 pts)</span>
-        </label>
-        <div className="relative">
-          <select
-            value={scorer}
-            onChange={e => !locked && handleScorerChange(e.target.value)}
-            disabled={locked}
-            className={`w-full appearance-none rounded-lg border px-3 py-2 pr-8 text-sm transition-colors
-              bg-pitch-900 focus:outline-none
-              ${locked
-                ? 'border-pitch-700 text-slate-600 cursor-not-allowed'
-                : scorer
-                  ? 'border-gold-500/60 text-white focus:border-gold-400'
-                  : 'border-pitch-600 text-slate-400 hover:border-pitch-500 focus:border-gold-400'
-              }`}
-          >
-            <option value="">— No prediction —</option>
-            {homeSquad.length > 0 && (
-              <optgroup label={`🏠 ${homeTeam}`}>
-                {homeSquad.map(p => (
-                  <option key={`h-${p.name}`} value={p.name}>
-                    {p.pos} · {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {awaySquad.length > 0 && (
-              <optgroup label={`✈️ ${awayTeam}`}>
-                {awaySquad.map(p => (
-                  <option key={`a-${p.name}`} value={p.name}>
-                    {p.pos} · {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▼</span>
+        </p>
+
+        {/* Step 1 – pick a team */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          {[{ side: 'home', team: homeTeam }, { side: 'away', team: awayTeam }].map(({ side, team }) => {
+            const isActive = scorerTeam === side;
+            return (
+              <button
+                key={side}
+                type="button"
+                onClick={() => handleTeamSelect(side)}
+                disabled={locked}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold
+                  transition-all duration-150 truncate
+                  ${locked ? 'opacity-40 cursor-not-allowed border-pitch-700 text-slate-600' :
+                    isActive
+                      ? 'border-gold-500 bg-gold-500/10 text-gold-400'
+                      : 'border-pitch-600 text-slate-400 hover:border-pitch-500 hover:text-slate-200'
+                  }`}
+              >
+                <Flag team={team} />
+                <span className="truncate">{team}</span>
+                {isActive && <span className="ml-auto text-gold-500 flex-shrink-0">✓</span>}
+              </button>
+            );
+          })}
         </div>
-        {scorer && !locked && (
-          <p className="text-xs text-gold-500 mt-1">
-            🎯 {scorer}
+
+        {/* Step 2 – pick a player (only shown once a team is selected) */}
+        {scorerTeam && (
+          <div className="relative">
+            <select
+              value={scorer}
+              onChange={e => !locked && handleScorerChange(e.target.value)}
+              disabled={locked}
+              autoFocus={!scorer}
+              className={`w-full appearance-none rounded-lg border px-3 py-2 pr-8 text-sm transition-colors
+                bg-pitch-900 focus:outline-none
+                ${locked
+                  ? 'border-pitch-700 text-slate-600 cursor-not-allowed'
+                  : scorer
+                    ? 'border-gold-500/60 text-gold-300 focus:border-gold-400'
+                    : 'border-pitch-600 text-slate-400 hover:border-pitch-500 focus:border-gold-400'
+                }`}
+            >
+              <option value="">— Select a player —</option>
+              {activeSquad.map(p => (
+                <option key={p.name} value={p.name}>
+                  {p.pos} · {p.name}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▼</span>
+          </div>
+        )}
+
+        {/* Confirmation */}
+        {scorer && (
+          <p className="text-xs text-gold-500 mt-1.5 flex items-center gap-1">
+            🎯 <span className="font-semibold">{scorer}</span>
+            <span className="text-slate-600">({scorerTeam === 'home' ? homeTeam : awayTeam})</span>
+            {!locked && (
+              <button
+                type="button"
+                onClick={() => { setScorer(''); setScorerTeam(''); save(home, away, ''); }}
+                className="ml-auto text-slate-600 hover:text-slate-400 transition-colors"
+                title="Clear"
+              >✕</button>
+            )}
           </p>
         )}
       </div>
