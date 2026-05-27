@@ -99,7 +99,7 @@ function Scoring() {
         <div className="space-y-3">
           <ScoreRow points={5} label="Exact Score" description="You predicted the exact scoreline — e.g. you said 2–1 and it finished 2–1" highlight />
           <ScoreRow points={3} label="Correct Result" description="You got the right outcome (win, loss or draw) but not the exact score" />
-          <ScoreRow points={1} label="Correct Goal Difference" description="The goal difference in your prediction matches the actual result, even if the overall result is wrong" />
+          <ScoreRow points={1} label="Correct score, wrong winner" description="Your predicted scoreline has the same margin as the actual result but you picked the wrong winner" />
           <ScoreRow points={0} label="No Points" description="None of the above criteria are met" />
         </div>
       </div>
@@ -126,7 +126,7 @@ function Scoring() {
           <Example actual="2 – 1" predicted="2 – 1" points={5} outcome="Exact score" />
           <Example actual="2 – 0" predicted="3 – 1" points={3} outcome="Correct result (home win) — goal diff doesn't match" />
           <Example actual="1 – 1" predicted="0 – 0" points={3} outcome="Correct result (draw)" />
-          <Example actual="3 – 1" predicted="1 – 0" points={1} outcome="Correct goal diff (+2) but wrong result" />
+          <Example actual="3 – 1" predicted="1 – 0" points={1} outcome="Correct score, wrong winner (+2 margin, but away win vs home win)" />
           <Example actual="2 – 1" predicted="0 – 2" points={0} outcome="Wrong result" />
         </div>
         <div className="mt-4 border-t border-pitch-700 pt-4">
@@ -165,7 +165,7 @@ function Scoring() {
           </div>
           <div className="bg-pitch-700 rounded-lg p-3 text-center">
             <p className="text-gold-400 font-black text-xl">2</p>
-            <p className="text-slate-400 text-xs mt-0.5">Goal diff</p>
+            <p className="text-slate-400 text-xs mt-0.5">Wrong winner</p>
           </div>
           <div className="bg-pitch-700 rounded-lg p-3 text-center">
             <p className="text-gold-400 font-black text-xl">3</p>

@@ -36,7 +36,7 @@ function LeaderboardTable({ standings, currentUser }) {
           <tr className="text-slate-400 text-xs uppercase tracking-wide border-b border-pitch-700">
             <th className="text-left py-2.5 pr-3 w-10">Rank</th>
             <th className="text-left py-2.5 pr-3">Player</th>
-            <th className="text-left py-2.5 pr-3 hidden sm:table-cell">Country</th>
+
             <th className="text-right py-2.5 pr-3 hidden sm:table-cell">
               <span className="text-gold-400">Exact</span>
             </th>
@@ -65,7 +65,7 @@ function LeaderboardTable({ standings, currentUser }) {
                     {isMe && <span className="text-xs text-gold-600 ml-1.5">(you)</span>}
                   </span>
                 </td>
-                <td className="py-3 pr-3 text-slate-400 hidden sm:table-cell">{entry.country}</td>
+
                 <td className="py-3 pr-3 text-right text-gold-400 font-bold hidden sm:table-cell">{entry.exact}</td>
                 <td className="py-3 pr-3 text-right text-slate-300 hidden sm:table-cell">{entry.correct}</td>
                 <td className="py-3 text-right font-black text-gold-400 text-base">{entry.points}</td>
@@ -79,7 +79,7 @@ function LeaderboardTable({ standings, currentUser }) {
         <span><span className="text-gold-400 font-bold">Exact</span> — correct scoreline (5 pts)</span>
         <span><span className="text-slate-300 font-bold">Result</span> — right outcome (3 pts)</span>
         <span><span className="text-gold-400 font-bold">⚽ Scorer</span> — first goalscorer (3 pts)</span>
-        <span>Goal diff = 1 pt</span>
+        <span>Correct score, wrong winner = 1 pt</span>
       </div>
     </div>
   );

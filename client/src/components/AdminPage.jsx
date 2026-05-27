@@ -1,9 +1,21 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FIXTURES, TEAMS } from '../data/wc2026';
+import { SQUADS } from '../data/squads';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { supabase } from '../lib/supabase';
 
-const ADMIN_PASSWORD = 'wc2026admin';
 const ALL_TEAMS = Object.keys(TEAMS).sort();
+
+// Returns Authorization header using the current Supabase session JWT.
+// No password ever leaves the client — the server verifies the token and
+// checks is_admin in the profiles table.
+async function getAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session?.access_token ?? ''}`,
+  };
+}
 const GROUPS_LIST = ['A','B','C','D','E','F','G','H','I','J','K','L'];
 
 const VENUES = [
@@ -146,23 +158,996 @@ function FixtureRow({ fixture, isOverridden, onEdit, onReset }) {
   );
 }
 
+// ── Auto-sync status panel ────────────────────────────────────────────────────
+function SyncStatus() {
+  const [syncData, setSyncData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function fetchStatus() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/sync-status', { headers: await getAuthHeaders() });
+      const data = await res.json();
+      setSyncData(data);
+    } catch {
+      setSyncData({ error: 'Could not reach server' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchStatus(); }, []);
+
+  function fmt(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  if (!syncData) {
+    return (
+      <div className="card mb-4 text-slate-500 text-sm py-3 text-center">
+        {loading ? 'Loading sync status…' : 'Unable to load sync status'}
+      </div>
+    );
+  }
+
+  const statusColor = syncData.error
+    ? 'text-red-400'
+    : syncData.enabled
+    ? 'text-green-400'
+    : 'text-amber-400';
+
+  return (
+    <div className="card mb-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-white font-bold text-sm flex items-center gap-2">
+            ⚡ Auto Results Sync
+            <span className={`text-xs font-normal ${statusColor}`}>
+              {syncData.error ? '⚠ error' : syncData.enabled ? '● live' : '○ no API key'}
+            </span>
+          </p>
+          <p className="text-slate-500 text-xs mt-0.5">
+            {syncData.enabled
+              ? 'Polling football-data.org every 5 minutes for finished matches'
+              : 'Set FOOTBALL_DATA_API_KEY in server/.env to enable automatic results'}
+          </p>
+        </div>
+        <button onClick={fetchStatus} disabled={loading} className="btn-secondary text-xs py-1 px-3 flex-shrink-0">
+          {loading ? '…' : '↻'}
+        </button>
+      </div>
+
+      {syncData.enabled && (
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="bg-pitch-700/60 rounded-lg p-2">
+            <p className="text-slate-500">Results stored</p>
+            <p className="text-gold-400 font-black text-lg leading-none mt-0.5">{syncData.totalResults ?? 0}</p>
+          </div>
+          <div className="bg-pitch-700/60 rounded-lg p-2">
+            <p className="text-slate-500">Last sync</p>
+            <p className="text-slate-300 font-semibold mt-0.5">{fmt(syncData.lastRun)}</p>
+          </div>
+          <div className="bg-pitch-700/60 rounded-lg p-2">
+            <p className="text-slate-500">Last success</p>
+            <p className="text-green-400 font-semibold mt-0.5">{fmt(syncData.lastSuccess)}</p>
+          </div>
+          <div className="bg-pitch-700/60 rounded-lg p-2">
+            <p className="text-slate-500">API key</p>
+            <p className="text-slate-300 font-semibold mt-0.5 truncate">{syncData.apiKey || '—'}</p>
+          </div>
+        </div>
+      )}
+
+      {!syncData.enabled && (
+        <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-amber-300">
+          <p className="font-semibold mb-0.5">How to set up</p>
+          <ol className="text-amber-400/80 space-y-0.5 list-decimal list-inside">
+            <li>Sign up free at <span className="text-amber-300 font-mono">football-data.org</span></li>
+            <li>Copy your API token from your account dashboard</li>
+            <li>Create <span className="font-mono">server/.env</span> and add: <span className="font-mono">FOOTBALL_DATA_API_KEY=your_token_here</span></li>
+            <li>Restart the server — results will sync automatically every 5 minutes</li>
+          </ol>
+        </div>
+      )}
+
+      {syncData.lastError && (
+        <p className="mt-2 text-xs text-red-400 bg-red-400/10 rounded px-2 py-1.5">
+          Last error: {syncData.lastError}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Manual results entry panel ────────────────────────────────────────────────
+function ResultsManager() {
+  const [results, setResults] = useState({});       // { fixtureId: { home, away, scorer } }
+  const [loadingFetch, setLoadingFetch] = useState(false);
+  const [saving, setSaving] = useState(null);       // fixtureId currently being saved
+  const [saved, setSaved] = useState({});           // { fixtureId: true } flash
+  const [error, setError] = useState('');
+  const [editValues,  setEditValues]  = useState({}); // { fixtureId: { home, away, scorer } } local edits
+  const [scorerTeams, setScorerTeams] = useState({}); // { fixtureId: 'home' | 'away' | '' }
+  const [filterGroup, setFilterGroup] = useState('all');
+
+  // Fetch current stored results from server
+  async function fetchResults() {
+    setLoadingFetch(true);
+    setError('');
+    try {
+      const r2 = await fetch('/api/leaderboard/results', { headers: await getAuthHeaders() });
+      if (r2.ok) {
+        const d2 = await r2.json();
+        const fetchedResults = d2.results || {};
+        setResults(fetchedResults);
+        setEditValues(prev => {
+          const next = { ...prev };
+          Object.entries(fetchedResults).forEach(([id, r]) => {
+            if (!next[id]) next[id] = { home: r.home, away: r.away, scorer: r.scorer ?? '' };
+          });
+          return next;
+        });
+        // Infer which team each stored scorer belongs to
+        setScorerTeams(prev => {
+          const next = { ...prev };
+          Object.entries(fetchedResults).forEach(([id, r]) => {
+            if (!r.scorer || next[id]) return;
+            const fixture = FIXTURES.find(f => f.id === id);
+            if (!fixture) return;
+            const inHome = (SQUADS[fixture.homeTeam] || []).some(p => p.name === r.scorer);
+            next[id] = inHome ? 'home' : 'away';
+          });
+          return next;
+        });
+      }
+    } catch (e) {
+      setError('Could not load results from server.');
+    } finally {
+      setLoadingFetch(false);
+    }
+  }
+
+  useEffect(() => { fetchResults(); }, []);
+
+  function getEdit(id) {
+    return editValues[id] || {
+      home:   results[id]?.home   ?? '',
+      away:   results[id]?.away   ?? '',
+      scorer: results[id]?.scorer ?? '',
+    };
+  }
+
+  function setEdit(id, key, val) {
+    if ((key === 'home' || key === 'away') && val !== '' && !/^\d{0,2}$/.test(val)) return;
+    setEditValues(prev => ({ ...prev, [id]: { ...getEdit(id), [key]: val } }));
+  }
+
+  async function saveResult(fixture) {
+    const { home, away, scorer } = getEdit(fixture.id);
+    if (home === '' || away === '') {
+      setError(`Enter both scores for ${fixture.homeTeam} vs ${fixture.awayTeam}`);
+      return;
+    }
+    setSaving(fixture.id);
+    setError('');
+    try {
+      const res = await fetch('/api/leaderboard/results', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          results: { [fixture.id]: { home, away, scorer: scorer || '' } },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setResults(prev => ({ ...prev, [fixture.id]: { home, away, scorer: scorer || '' } }));
+      setSaved(prev => ({ ...prev, [fixture.id]: true }));
+      setTimeout(() => setSaved(prev => { const n = { ...prev }; delete n[fixture.id]; return n; }), 2000);
+    } catch (e) {
+      setError(`Error saving ${fixture.id}: ${e.message}`);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function clearResult(fixtureId) {
+    if (!confirm(`Clear result for ${fixtureId}?`)) return;
+    setSaving(fixtureId);
+    setError('');
+    try {
+      const res = await fetch('/api/leaderboard/results', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          results: { [fixtureId]: null },
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setResults(prev => { const n = { ...prev }; delete n[fixtureId]; return n; });
+      setEditValues(prev => { const n = { ...prev }; delete n[fixtureId]; return n; });
+    } catch (e) {
+      setError(`Error clearing ${fixtureId}: ${e.message}`);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const groups = ['all', ...GROUPS_LIST];
+  const filtered = FIXTURES.filter(f => filterGroup === 'all' || f.group === filterGroup);
+  const resultCount = Object.keys(results).length;
+
+  return (
+    <div className="card mb-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-white font-bold text-sm">📋 Manual Results Entry</p>
+          <p className="text-slate-500 text-xs mt-0.5">
+            {resultCount > 0 ? `${resultCount} result${resultCount !== 1 ? 's' : ''} stored` : 'No results stored yet'}
+            {' · '}Enter the score and first goalscorer for each match
+          </p>
+        </div>
+        <button onClick={fetchResults} disabled={loadingFetch} className="btn-secondary text-xs py-1 px-3">
+          {loadingFetch ? '…' : '↻ Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded px-3 py-2 mb-3">
+          {error}
+        </p>
+      )}
+
+      {/* Group filter */}
+      <div className="flex gap-1 flex-wrap mb-3">
+        {groups.map(g => (
+          <button
+            key={g}
+            onClick={() => setFilterGroup(g)}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              filterGroup === g
+                ? 'bg-gold-500 border-gold-500 text-pitch-900 font-bold'
+                : 'border-pitch-600 text-slate-400 hover:border-slate-400'
+            }`}
+          >
+            {g === 'all' ? 'All' : `Group ${g}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Fixture rows */}
+      <div className="space-y-2 max-h-[32rem] overflow-y-auto pr-1">
+        {filtered.map(f => {
+          const stored   = results[f.id];
+          const edit     = getEdit(f.id);
+          const hasScore = edit.home !== '' && edit.away !== '';
+          const isNilNil = edit.home === '0' && edit.away === '0';
+          const isDirty  = stored
+            ? (edit.home !== stored.home || edit.away !== stored.away || (edit.scorer || '') !== (stored.scorer || ''))
+            : (edit.home !== '' || edit.away !== '');
+          const isSaving = saving === f.id;
+          const wasSaved = saved[f.id];
+
+          const homeSquad    = (SQUADS[f.homeTeam] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+          const awaySquad    = (SQUADS[f.awayTeam] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+          const scorerTeam   = scorerTeams[f.id] || '';
+          const activeSquad  = scorerTeam === 'home' ? homeSquad : scorerTeam === 'away' ? awaySquad : [];
+
+          function handleTeamSelect(side) {
+            if (scorerTeam === side) {
+              // Deselect — clear team and scorer
+              setScorerTeams(prev => ({ ...prev, [f.id]: '' }));
+              setEdit(f.id, 'scorer', '');
+            } else {
+              setScorerTeams(prev => ({ ...prev, [f.id]: side }));
+              // Clear scorer if it belonged to the other team
+              const newSquad = side === 'home' ? homeSquad : awaySquad;
+              if (edit.scorer && !newSquad.some(p => p.name === edit.scorer)) {
+                setEdit(f.id, 'scorer', '');
+              }
+            }
+          }
+
+          return (
+            <div
+              key={f.id}
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                stored ? 'bg-green-500/5 border border-green-500/20' : 'bg-pitch-700/40 border border-pitch-700/40'
+              }`}
+            >
+              {/* ── Score row ── */}
+              <div className="flex items-center gap-2">
+                {/* ID */}
+                <span className="text-slate-500 text-xs font-mono w-7 flex-shrink-0">{f.id}</span>
+
+                {/* Teams */}
+                <div className="flex-1 min-w-0">
+                  <span className="text-white text-xs truncate block">
+                    {f.homeTeam} <span className="text-slate-500">vs</span> {f.awayTeam}
+                  </span>
+                  <span className="text-slate-600 text-xs">{f.date}</span>
+                </div>
+
+                {/* Score inputs */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <input
+                    type="text" inputMode="numeric"
+                    value={edit.home} onChange={e => setEdit(f.id, 'home', e.target.value)}
+                    placeholder="—"
+                    className="w-9 text-center bg-pitch-900 border border-pitch-600 rounded px-1 py-1 text-white text-sm focus:border-gold-400 focus:outline-none"
+                  />
+                  <span className="text-slate-500 text-xs">–</span>
+                  <input
+                    type="text" inputMode="numeric"
+                    value={edit.away} onChange={e => setEdit(f.id, 'away', e.target.value)}
+                    placeholder="—"
+                    className="w-9 text-center bg-pitch-900 border border-pitch-600 rounded px-1 py-1 text-white text-sm focus:border-gold-400 focus:outline-none"
+                  />
+                </div>
+
+                {/* Save button */}
+                <button
+                  onClick={() => saveResult(f)}
+                  disabled={isSaving || (!isDirty && !stored)}
+                  className={`text-xs px-2.5 py-1 rounded-lg flex-shrink-0 font-semibold transition-colors ${
+                    wasSaved
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : isDirty
+                      ? 'btn-primary'
+                      : 'text-slate-600 border border-pitch-700 cursor-default'
+                  }`}
+                >
+                  {isSaving ? '…' : wasSaved ? '✓' : isDirty ? 'Save' : stored ? 'Saved' : 'Save'}
+                </button>
+
+                {/* Clear button */}
+                {stored && (
+                  <button
+                    onClick={() => clearResult(f.id)}
+                    disabled={isSaving}
+                    className="text-xs text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"
+                    title="Clear result"
+                  >✕</button>
+                )}
+              </div>
+
+              {/* ── First goalscorer — step 1: pick team, step 2: pick player ── */}
+              <div className="mt-2 pl-7 space-y-1.5">
+                <span className="text-slate-500 text-[10px] font-semibold uppercase tracking-wide">
+                  ⚽ First Goalscorer
+                </span>
+
+                {/* Team buttons */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[{ side: 'home', team: f.homeTeam }, { side: 'away', team: f.awayTeam }].map(({ side, team }) => (
+                    <button
+                      key={side}
+                      type="button"
+                      onClick={() => handleTeamSelect(side)}
+                      disabled={isNilNil}
+                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs font-semibold transition-all truncate
+                        ${isNilNil
+                          ? 'opacity-30 cursor-not-allowed border-pitch-700 text-slate-600'
+                          : scorerTeam === side
+                          ? 'border-gold-500 bg-gold-500/10 text-gold-400'
+                          : 'border-pitch-600 text-slate-400 hover:border-pitch-500 hover:text-slate-200'
+                        }`}
+                    >
+                      <span className="truncate">{team}</span>
+                      {scorerTeam === side && <span className="ml-auto text-gold-500 flex-shrink-0">✓</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Player dropdown — only shown once a team is selected */}
+                {scorerTeam && !isNilNil && (
+                  <div className="relative">
+                    <select
+                      value={edit.scorer || ''}
+                      onChange={e => setEdit(f.id, 'scorer', e.target.value)}
+                      autoFocus={!edit.scorer}
+                      className={`w-full appearance-none bg-pitch-900 border rounded px-2 py-1.5 text-sm focus:outline-none pr-6 transition-colors
+                        ${edit.scorer
+                          ? 'border-gold-500/60 text-gold-300 focus:border-gold-400'
+                          : 'border-pitch-600 text-slate-400 focus:border-gold-400'
+                        }`}
+                    >
+                      <option value="">— Select a player —</option>
+                      {activeSquad.map(p => (
+                        <option key={p.name} value={p.name}>{p.pos} · {p.name}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▼</span>
+                  </div>
+                )}
+
+                {/* Confirmed selection */}
+                {edit.scorer && !isNilNil && (
+                  <p className="text-xs text-gold-500 flex items-center gap-1">
+                    🎯 <span className="font-semibold">{edit.scorer}</span>
+                    <span className="text-slate-600">({scorerTeam === 'home' ? f.homeTeam : f.awayTeam})</span>
+                    <button
+                      type="button"
+                      onClick={() => { setEdit(f.id, 'scorer', ''); setScorerTeams(prev => ({ ...prev, [f.id]: '' })); }}
+                      className="ml-auto text-slate-600 hover:text-slate-400 transition-colors"
+                      title="Clear"
+                    >✕</button>
+                  </p>
+                )}
+
+                {isNilNil && (
+                  <p className="text-slate-600 text-xs">No goalscorer — 0–0</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── In-app notifications panel ────────────────────────────────────────────────
+function NotificationsPanel() {
+  const [sending, setSending]   = useState({});
+  const [results, setResults]   = useState({});
+  const [digestDate, setDigestDate] = useState(new Date().toISOString().slice(0, 10));
+  const [totalCount, setTotalCount] = useState(null);
+
+  // Load total notification count on mount
+  useEffect(() => {
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .then(({ count }) => setTotalCount(count ?? 0));
+  }, []);
+
+  async function trigger(type, extraBody = {}) {
+    setSending(s => ({ ...s, [type]: true }));
+    setResults(s => ({ ...s, [type]: null }));
+    try {
+      const res = await fetch(`/api/admin/notifications/${type}`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ ...extraBody }),
+      });
+      const data = await res.json();
+      setResults(s => ({ ...s, [type]: res.ok ? '✅ ' + data.message : '❌ ' + data.error }));
+      // Refresh total count
+      if (res.ok) {
+        supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .then(({ count }) => setTotalCount(count ?? 0));
+      }
+    } catch (e) {
+      setResults(s => ({ ...s, [type]: '❌ ' + e.message }));
+    } finally {
+      setSending(s => ({ ...s, [type]: false }));
+    }
+  }
+
+  return (
+    <div className="card mb-6">
+      <div className="flex items-start justify-between gap-4 mb-1">
+        <h3 className="text-sm font-bold text-white">🔔 In-App Notifications</h3>
+        {totalCount !== null && (
+          <span className="text-xs text-slate-500 flex-shrink-0">
+            {totalCount.toLocaleString()} sent total
+          </span>
+        )}
+      </div>
+      <p className="text-slate-500 text-xs mb-5">
+        These send in-app notifications to users directly — visible in the bell icon in the header.
+        Deadline reminders and the daily digest also fire automatically; use these buttons to
+        trigger them manually at any time.
+      </p>
+
+      <div className="space-y-5">
+
+        {/* ── Deadline reminders ── */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-300">
+              ⏰ Deadline Reminders
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Notifies all users who haven't yet predicted today's fixtures.
+              Auto-fires hourly on match days.
+            </p>
+            {results['deadline'] && (
+              <p className="text-xs mt-1.5 font-semibold text-slate-400">{results['deadline']}</p>
+            )}
+          </div>
+          <button
+            onClick={() => trigger('deadline')}
+            disabled={sending['deadline']}
+            className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0 disabled:opacity-50"
+          >
+            {sending['deadline'] ? 'Sending…' : 'Send now'}
+          </button>
+        </div>
+
+        {/* ── Daily digest ── */}
+        <div className="border-t border-pitch-700 pt-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-300">
+                📊 End-of-Day Results Digest
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Tells users today's results are in and to check the leaderboard.
+                Auto-fires at 23:00 BST on match days (skipped on rest days).
+              </p>
+              {results['daily-digest'] && (
+                <p className="text-xs mt-1.5 font-semibold text-slate-400">{results['daily-digest']}</p>
+              )}
+            </div>
+            <button
+              onClick={() => trigger('daily-digest', { date: digestDate })}
+              disabled={sending['daily-digest']}
+              className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0 disabled:opacity-50"
+            >
+              {sending['daily-digest'] ? 'Sending…' : 'Send now'}
+            </button>
+          </div>
+          {/* Date picker for manual overrides */}
+          <div className="mt-3 flex items-center gap-2">
+            <label className="text-xs text-slate-500 flex-shrink-0">For date:</label>
+            <input
+              type="date"
+              value={digestDate}
+              onChange={e => setDigestDate(e.target.value)}
+              className="bg-pitch-900 border border-pitch-600 rounded px-2 py-1 text-white text-xs
+                         focus:border-gold-400 focus:outline-none"
+            />
+            <span className="text-xs text-slate-600">
+              (defaults to today — change to test a specific date)
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      <p className="text-slate-600 text-xs mt-5 border-t border-pitch-700 pt-3">
+        📌 Users control which notification types they receive via their Preferences page.
+        Notifications respect each user's <span className="text-slate-500">notifyResults</span> and{' '}
+        <span className="text-slate-500">notifyDeadlines</span> settings.
+      </p>
+    </div>
+  );
+}
+
+// ── Email notification panel ──────────────────────────────────────────────────
+function EmailPanel() {
+  const [sending, setSending] = useState({});
+  const [results, setResults] = useState({});
+
+  async function trigger(type) {
+    setSending(s => ({ ...s, [type]: true }));
+    setResults(s => ({ ...s, [type]: null }));
+    try {
+      const res = await fetch(`/api/admin/email/${type}`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      setResults(s => ({ ...s, [type]: res.ok ? '✅ ' + data.message : '❌ ' + data.error }));
+    } catch (e) {
+      setResults(s => ({ ...s, [type]: '❌ ' + e.message }));
+    } finally {
+      setSending(s => ({ ...s, [type]: false }));
+    }
+  }
+
+  const actions = [
+    {
+      id: 'daily-results',
+      label: '⚽ Send Today\'s Results Email',
+      desc: 'Sends today\'s result digest to all users (auto-fires at 23:00 BST)',
+    },
+    {
+      id: 'reminder',
+      label: '⏰ Send Reminder Emails',
+      desc: 'Emails all users who have unfilled predictions',
+    },
+    {
+      id: 'digest',
+      label: '📊 Send Weekly Digest',
+      desc: 'Sends current standings to all users',
+    },
+  ];
+
+  return (
+    <div className="card mb-6">
+      <h3 className="text-sm font-bold text-white mb-1">✉️ Email Notifications</h3>
+      <p className="text-slate-500 text-xs mb-4">
+        The daily results email fires automatically at 23:00 BST each evening.
+        Use these buttons to trigger emails manually at any time.
+      </p>
+      <div className="space-y-3">
+        {actions.map(({ id, label, desc }) => (
+          <div key={id} className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-300">{label}</p>
+              <p className="text-xs text-slate-500">{desc}</p>
+              {results[id] && (
+                <p className="text-xs mt-1 font-semibold text-slate-400">{results[id]}</p>
+              )}
+            </div>
+            <button
+              onClick={() => trigger(id)}
+              disabled={sending[id]}
+              className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0 disabled:opacity-50"
+            >
+              {sending[id] ? 'Sending…' : 'Send now'}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="text-slate-600 text-xs mt-4 border-t border-pitch-700 pt-3">
+        📌 While using <code className="text-slate-500">onboarding@resend.dev</code>, emails only
+        deliver to the Resend account owner's address. Add a verified domain in your Resend
+        dashboard and update <code className="text-slate-500">NOTIFY_FROM</code> in{' '}
+        <code className="text-slate-500">server/.env</code> to send to all users.
+      </p>
+    </div>
+  );
+}
+
+// ── Bookies Odds manager ──────────────────────────────────────────────────────
+// Implied probability from fractional odds string e.g. "4/1" → 20%
+function pct(odds) {
+  if (!odds) return null;
+  const parts = String(odds).split('/');
+  if (parts.length !== 2) return null;
+  const num = parseFloat(parts[0]);
+  const den = parseFloat(parts[1]);
+  if (isNaN(num) || isNaN(den) || den === 0) return null;
+  return Math.round((den / (num + den)) * 100);
+}
+
+const EMPTY_SCORELINES = () => [
+  { home: '', away: '', odds: '' },
+  { home: '', away: '', odds: '' },
+  { home: '', away: '', odds: '' },
+];
+const EMPTY_SCORERS = () => [
+  { name: '', odds: '' },
+  { name: '', odds: '' },
+  { name: '', odds: '' },
+  { name: '', odds: '' },
+];
+
+function OddsManager() {
+  const [expandedId,  setExpandedId]  = useState('');
+  const [scorelines,  setScorelines]  = useState(EMPTY_SCORELINES());
+  const [scorers,     setScorers]     = useState(EMPTY_SCORERS());
+  const [saving,      setSaving]      = useState(false);
+  const [savedFlash,  setSavedFlash]  = useState(false);
+  const [clearing,    setClearing]    = useState(false);
+  const [error,       setError]       = useState('');
+  const [existingIds, setExistingIds] = useState(new Set());
+  const [filterGroup, setFilterGroup] = useState('all');
+  const [missingOnly, setMissingOnly] = useState(false);
+
+  // Load which fixtures already have odds on mount
+  useEffect(() => {
+    supabase.from('fixture_odds').select('fixture_id').then(({ data }) => {
+      if (data) setExistingIds(new Set(data.map(r => r.fixture_id)));
+    });
+  }, []);
+
+  // Load existing odds when a fixture is expanded
+  useEffect(() => {
+    if (!expandedId) return;
+    setScorelines(EMPTY_SCORELINES());
+    setScorers(EMPTY_SCORERS());
+    setError('');
+    supabase
+      .from('fixture_odds')
+      .select('*')
+      .eq('fixture_id', expandedId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        const sl = data.scorelines || [];
+        setScorelines([
+          sl[0] ? { home: String(sl[0].home), away: String(sl[0].away), odds: String(sl[0].odds) } : { home: '', away: '', odds: '' },
+          sl[1] ? { home: String(sl[1].home), away: String(sl[1].away), odds: String(sl[1].odds) } : { home: '', away: '', odds: '' },
+          sl[2] ? { home: String(sl[2].home), away: String(sl[2].away), odds: String(sl[2].odds) } : { home: '', away: '', odds: '' },
+        ]);
+        const sc = data.scorers || [];
+        setScorers([
+          sc[0] ? { name: sc[0].name, odds: String(sc[0].odds) } : { name: '', odds: '' },
+          sc[1] ? { name: sc[1].name, odds: String(sc[1].odds) } : { name: '', odds: '' },
+          sc[2] ? { name: sc[2].name, odds: String(sc[2].odds) } : { name: '', odds: '' },
+          sc[3] ? { name: sc[3].name, odds: String(sc[3].odds) } : { name: '', odds: '' },
+        ]);
+      });
+  }, [expandedId]);
+
+  function toggle(id) {
+    setExpandedId(prev => prev === id ? '' : id);
+  }
+
+  const fixture = FIXTURES.find(f => f.id === expandedId);
+
+  function setSL(i, key, val) {
+    setScorelines(prev => prev.map((s, idx) => idx === i ? { ...s, [key]: val } : s));
+  }
+  function setSC(i, key, val) {
+    setScorers(prev => prev.map((s, idx) => idx === i ? { ...s, [key]: val } : s));
+  }
+
+  async function save() {
+    if (!expandedId || !fixture) return;
+    setSaving(true);
+    setError('');
+    try {
+      const validSL = scorelines
+        .filter(s => s.home !== '' && s.away !== '' && s.odds !== '')
+        .map(s => ({ home: Number(s.home), away: Number(s.away), odds: s.odds.trim() }));
+
+      const validSC = scorers
+        .filter(s => s.name && s.odds !== '')
+        .map(s => {
+          const team = (SQUADS[fixture.homeTeam] || []).some(p => p.name === s.name)
+            ? fixture.homeTeam : fixture.awayTeam;
+          return { name: s.name, team, odds: s.odds.trim() };
+        });
+
+      const { error: err } = await supabase
+        .from('fixture_odds')
+        .upsert(
+          { fixture_id: expandedId, scorelines: validSL, scorers: validSC, updated_at: new Date().toISOString() },
+          { onConflict: 'fixture_id' }
+        );
+
+      if (err) throw err;
+      setExistingIds(prev => new Set([...prev, expandedId]));
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 2000);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function clear() {
+    if (!expandedId || !window.confirm('Remove bookies odds for this fixture?')) return;
+    setClearing(true);
+    try {
+      await supabase.from('fixture_odds').delete().eq('fixture_id', expandedId);
+      setExistingIds(prev => { const n = new Set(prev); n.delete(expandedId); return n; });
+      setScorelines(EMPTY_SCORELINES());
+      setScorers(EMPTY_SCORERS());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  const oddsInputCls  = 'w-20 bg-pitch-900 border border-pitch-600 rounded px-2 py-1.5 text-white text-sm focus:border-gold-400 focus:outline-none';
+  const scoreInputCls = 'w-12 text-center bg-pitch-900 border border-pitch-600 rounded px-1 py-1.5 text-white text-sm focus:border-gold-400 focus:outline-none';
+
+  // Filtered + sorted fixture list
+  const sortedFixtures = [...FIXTURES].sort((a, b) =>
+    a.date.localeCompare(b.date) || a.kickoff.localeCompare(b.kickoff)
+  );
+  const filteredFixtures = sortedFixtures.filter(f => {
+    if (filterGroup !== 'all' && f.group !== filterGroup) return false;
+    if (missingOnly && existingIds.has(f.id)) return false;
+    return true;
+  });
+
+  return (
+    <div className="mb-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-white font-bold text-sm">🎰 Bookies' Odds</p>
+          <p className="text-slate-500 text-xs mt-0.5">
+            {existingIds.size > 0
+              ? `${existingIds.size} of ${FIXTURES.length} fixtures with odds saved`
+              : 'No odds saved yet — expand a fixture below to add odds'}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Filters ── */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {['all', ...GROUPS_LIST].map(g => (
+          <button
+            key={g}
+            onClick={() => setFilterGroup(g)}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              filterGroup === g
+                ? 'bg-gold-500 border-gold-500 text-pitch-900 font-bold'
+                : 'border-pitch-600 text-slate-400 hover:border-slate-400'
+            }`}
+          >
+            {g === 'all' ? 'All' : `Group ${g}`}
+          </button>
+        ))}
+        <button
+          onClick={() => setMissingOnly(v => !v)}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ml-auto ${
+            missingOnly
+              ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 font-semibold'
+              : 'border-pitch-600 text-slate-400 hover:border-slate-400'
+          }`}
+        >
+          {missingOnly ? '✕ Missing only' : '⚡ Missing only'}
+        </button>
+      </div>
+
+      {/* ── Fixture list ── */}
+      <div className="space-y-1.5">
+        {filteredFixtures.map(f => {
+          const hasOdds    = existingIds.has(f.id);
+          const isExpanded = expandedId === f.id;
+
+          return (
+            <div
+              key={f.id}
+              className={`rounded-xl border overflow-hidden transition-colors ${
+                hasOdds
+                  ? 'border-green-500/30 bg-green-500/5'
+                  : 'border-pitch-700 bg-pitch-800'
+              }`}
+            >
+              {/* ── Row header (always visible, clickable) ── */}
+              <button
+                onClick={() => toggle(f.id)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-pitch-700/40 transition-colors text-left"
+              >
+                <span className="text-slate-600 text-xs font-mono w-7 flex-shrink-0">{f.id}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-semibold truncate">
+                    {f.homeTeam} <span className="text-slate-500 font-normal">vs</span> {f.awayTeam}
+                  </p>
+                  <p className="text-slate-600 text-xs">{f.date} · {f.kickoff}</p>
+                </div>
+                {hasOdds ? (
+                  <span className="text-green-400 text-xs font-semibold flex-shrink-0">✓ Odds saved</span>
+                ) : (
+                  <span className="text-slate-600 text-xs flex-shrink-0">No odds</span>
+                )}
+                <span className={`text-slate-500 text-xs flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+
+              {/* ── Inline edit form ── */}
+              {isExpanded && (
+                <div className="border-t border-pitch-700 px-4 py-4 space-y-5">
+
+                  {/* Scorelines */}
+                  <div>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">
+                      Top 3 Most Likely Scorelines
+                    </p>
+                    <p className="text-xs text-slate-600 mb-3">
+                      Enter fractional odds (e.g. 4/1) — implied % calculated automatically.
+                    </p>
+                    <div className="space-y-2">
+                      {scorelines.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 flex-wrap">
+                          <span className="text-slate-600 text-xs w-4 text-right flex-shrink-0">{i + 1}.</span>
+                          <span className="text-slate-500 text-xs flex-shrink-0">{f.homeTeam.split(' ')[0]}</span>
+                          <input type="number" min="0" max="99" placeholder="0"
+                            value={s.home} onChange={e => setSL(i, 'home', e.target.value)}
+                            className={scoreInputCls} />
+                          <span className="text-slate-500 text-sm font-bold flex-shrink-0">–</span>
+                          <input type="number" min="0" max="99" placeholder="0"
+                            value={s.away} onChange={e => setSL(i, 'away', e.target.value)}
+                            className={scoreInputCls} />
+                          <span className="text-slate-500 text-xs flex-shrink-0">{f.awayTeam.split(' ')[0]}</span>
+                          <span className="text-slate-600 text-xs flex-shrink-0 ml-2">Odds:</span>
+                          <input type="text" placeholder="e.g. 4/1"
+                            value={s.odds} onChange={e => setSL(i, 'odds', e.target.value)}
+                            className={oddsInputCls} />
+                          <span className={`text-sm font-bold w-10 flex-shrink-0 ${pct(s.odds) !== null ? 'text-gold-400' : 'text-slate-700'}`}>
+                            {pct(s.odds) !== null ? `${pct(s.odds)}%` : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Scorers */}
+                  <div>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">
+                      Top 4 First Goalscorer Picks
+                    </p>
+                    <p className="text-xs text-slate-600 mb-3">
+                      Select a player from either squad, then enter their fractional odds.
+                    </p>
+                    <div className="space-y-2">
+                      {scorers.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 flex-wrap">
+                          <span className="text-slate-600 text-xs w-4 text-right flex-shrink-0">{i + 1}.</span>
+                          <div className="relative flex-1 min-w-[160px]">
+                            <select value={s.name} onChange={e => setSC(i, 'name', e.target.value)}
+                              className="w-full appearance-none bg-pitch-900 border border-pitch-600 rounded px-2 py-1.5 text-white text-sm focus:border-gold-400 focus:outline-none pr-6"
+                            >
+                              <option value="">— select player —</option>
+                              <optgroup label={f.homeTeam}>
+                                {(SQUADS[f.homeTeam] || []).slice().sort((a, b) => a.name.localeCompare(b.name))
+                                  .map(p => <option key={p.name} value={p.name}>{p.pos} · {p.name}</option>)}
+                              </optgroup>
+                              <optgroup label={f.awayTeam}>
+                                {(SQUADS[f.awayTeam] || []).slice().sort((a, b) => a.name.localeCompare(b.name))
+                                  .map(p => <option key={p.name} value={p.name}>{p.pos} · {p.name}</option>)}
+                              </optgroup>
+                            </select>
+                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▼</span>
+                          </div>
+                          <span className="text-slate-600 text-xs flex-shrink-0">Odds:</span>
+                          <input type="text" placeholder="e.g. 4/1"
+                            value={s.odds} onChange={e => setSC(i, 'odds', e.target.value)}
+                            className={oddsInputCls} />
+                          <span className={`text-sm font-bold w-10 flex-shrink-0 ${pct(s.odds) !== null ? 'text-gold-400' : 'text-slate-700'}`}>
+                            {pct(s.odds) !== null ? `${pct(s.odds)}%` : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded px-3 py-2">
+                      {error}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 pt-1 border-t border-pitch-700">
+                    <button onClick={save} disabled={saving}
+                      className={`btn-primary text-sm py-1.5 px-5 mt-3 ${savedFlash ? '!bg-green-500 hover:!bg-green-400' : ''}`}
+                    >
+                      {saving ? 'Saving…' : savedFlash ? '✓ Saved!' : 'Save Odds'}
+                    </button>
+                    {hasOdds && (
+                      <button onClick={clear} disabled={clearing}
+                        className="btn-secondary text-sm py-1.5 px-4 mt-3 hover:text-red-400 transition-colors"
+                      >
+                        {clearing ? '…' : 'Clear'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {filteredFixtures.length === 0 && (
+          <p className="text-slate-600 text-sm text-center py-8">No fixtures match this filter</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const ADMIN_TABS = [
+  { id: 'results',       label: '📋 Results'       },
+  { id: 'odds',          label: '🎰 Bookies Odds'   },
+  { id: 'notifications', label: '🔔 Notifications'  },
+  { id: 'emails',        label: '✉️ Emails'         },
+  { id: 'fixtures',      label: '⚙️ Fixtures'       },
+];
+
 export default function AdminPage() {
-  const [authed, setAuthed] = useState(false);
-  const [password, setPassword] = useState('');
-  const [pwError, setPwError] = useState('');
+  const [adminTab, setAdminTab] = useState('results');
   const [overrides, setOverrides] = useLocalStorage('wc2026_fixture_overrides', {});
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
   const [search, setSearch] = useState('');
-
-  function login() {
-    if (password === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setPwError('');
-    } else {
-      setPwError('Incorrect password');
-    }
-  }
 
   const mergedFixtures = useMemo(
     () => FIXTURES.map(f => ({ ...f, ...(overrides[f.id] || {}) })),
@@ -209,89 +1194,101 @@ export default function AdminPage() {
     }
   }
 
-  if (!authed) {
-    return (
-      <div className="animate-fade-in mt-10 max-w-sm mx-auto">
-        <div className="card text-center">
-          <div className="text-4xl mb-3">🔐</div>
-          <h2 className="text-xl font-black text-white mb-1">Admin Access</h2>
-          <p className="text-slate-400 text-sm mb-5">Enter the admin password to manage fixtures</p>
-          <div className="space-y-3">
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && login()}
-              placeholder="Password"
-              autoFocus
-              className="w-full bg-pitch-900 border-2 border-pitch-600 rounded-lg px-4 py-2.5 text-white
-                         placeholder-slate-500 focus:border-gold-400 focus:outline-none transition-colors"
-            />
-            {pwError && <p className="text-red-400 text-xs">{pwError}</p>}
-            <button onClick={login} className="btn-primary w-full py-3">Enter</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const overrideCount = Object.keys(overrides).length;
 
   return (
     <div className="animate-fade-in mt-6">
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-black text-white">Fixture Admin</h2>
-          <p className="text-slate-400 text-xs mt-0.5">
-            {overrideCount === 0
-              ? 'No overrides — showing default fixture data'
-              : `${overrideCount} fixture${overrideCount > 1 ? 's' : ''} overridden`}
-          </p>
-        </div>
-        {overrideCount > 0 && (
+
+      {/* ── Admin tab bar ─────────────────────────────────────────────────── */}
+      <div className="flex gap-1 bg-pitch-800 border border-pitch-700 rounded-xl p-1 mb-6">
+        {ADMIN_TABS.map(tab => (
           <button
-            onClick={resetAll}
-            className="btn-secondary text-xs py-1.5 px-3 hover:text-red-400 transition-colors"
+            key={tab.id}
+            onClick={() => setAdminTab(tab.id)}
+            className={`flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
+              adminTab === tab.id
+                ? 'bg-pitch-700 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
-            Reset All
+            {tab.label}
           </button>
-        )}
+        ))}
       </div>
 
-      {/* Search */}
-      <input
-        type="text"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search by team, group, stadium or city…"
-        className="w-full bg-pitch-900 border-2 border-pitch-600 rounded-lg px-4 py-2.5 text-white
-                   placeholder-slate-500 focus:border-gold-400 focus:outline-none transition-colors mb-4 text-sm"
-      />
+      {/* ── Results tab ───────────────────────────────────────────────────── */}
+      {adminTab === 'results' && (
+        <>
+          <SyncStatus />
+          <ResultsManager />
+        </>
+      )}
 
-      {/* Fixture list */}
-      <div className="space-y-2">
-        {filtered.map(fixture =>
-          editingId === fixture.id ? (
-            <EditForm
-              key={fixture.id}
-              draft={draft}
-              setDraft={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-              fixtureId={fixture.id}
-            />
-          ) : (
-            <FixtureRow
-              key={fixture.id}
-              fixture={fixture}
-              isOverridden={!!overrides[fixture.id]}
-              onEdit={() => startEdit(fixture)}
-              onReset={() => resetFixture(fixture.id)}
-            />
-          )
-        )}
-      </div>
+      {/* ── Bookies Odds tab ──────────────────────────────────────────────── */}
+      {adminTab === 'odds' && <OddsManager />}
+
+      {/* ── Notifications tab ─────────────────────────────────────────────── */}
+      {adminTab === 'notifications' && <NotificationsPanel />}
+
+      {/* ── Emails tab ────────────────────────────────────────────────────── */}
+      {adminTab === 'emails' && <EmailPanel />}
+
+      {/* ── Fixtures tab ──────────────────────────────────────────────────── */}
+      {adminTab === 'fixtures' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-black text-white">Fixture Editor</h2>
+              <p className="text-slate-400 text-xs mt-0.5">
+                {overrideCount === 0
+                  ? 'No overrides — showing default fixture data'
+                  : `${overrideCount} fixture${overrideCount > 1 ? 's' : ''} overridden`}
+              </p>
+            </div>
+            {overrideCount > 0 && (
+              <button
+                onClick={resetAll}
+                className="btn-secondary text-xs py-1.5 px-3 hover:text-red-400 transition-colors"
+              >
+                Reset All
+              </button>
+            )}
+          </div>
+
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by team, group, stadium or city…"
+            className="w-full bg-pitch-900 border-2 border-pitch-600 rounded-lg px-4 py-2.5 text-white
+                       placeholder-slate-500 focus:border-gold-400 focus:outline-none transition-colors mb-4 text-sm"
+          />
+
+          <div className="space-y-2">
+            {filtered.map(fixture =>
+              editingId === fixture.id ? (
+                <EditForm
+                  key={fixture.id}
+                  draft={draft}
+                  setDraft={setDraft}
+                  onSave={saveEdit}
+                  onCancel={cancelEdit}
+                  fixtureId={fixture.id}
+                />
+              ) : (
+                <FixtureRow
+                  key={fixture.id}
+                  fixture={fixture}
+                  isOverridden={!!overrides[fixture.id]}
+                  onEdit={() => startEdit(fixture)}
+                  onReset={() => resetFixture(fixture.id)}
+                />
+              )
+            )}
+          </div>
+        </>
+      )}
+
     </div>
   );
 }

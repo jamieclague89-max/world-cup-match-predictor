@@ -2,6 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens ──────────────────────────────────────────────────────────────
+   pitch-* and gold-* Tailwind classes use these CSS variables.
+   Swapping the values is all that's needed to flip the entire colour scheme.
+   Values are raw R G B (space-separated) so Tailwind opacity modifiers work,
+   e.g. bg-pitch-800/60 → rgb(var(--pitch-800) / 0.6)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Dark mode (default) */
+:root {
+  --pitch-900: 10 22 40;     /* #0a1628 */
+  --pitch-800: 15 34 64;     /* #0f2240 */
+  --pitch-700: 22 48 88;     /* #163058 */
+  --pitch-600: 30 64 128;    /* #1e4080 */
+
+  --gold-400: 245 200 66;    /* #f5c842 */
+  --gold-500: 232 184 0;     /* #e8b800 */
+  --gold-600: 201 154 0;     /* #c99a00 */
+}
+
+/* Light mode — applied when <html class="light"> */
+html.light {
+  --pitch-900: 241 245 249;  /* #f1f5f9  slate-100  — page background   */
+  --pitch-800: 255 255 255;  /* #ffffff             — card background    */
+  --pitch-700: 226 232 240;  /* #e2e8f0  slate-200  — borders            */
+  --pitch-600: 203 213 224;  /* #cbd5e0  slate-300  — subtle borders     */
+
+  /* Gold scale shifted one step lighter so bg uses (btn, badges) pass AA.
+     text-gold-* is overridden separately below with darker values for text. */
+  --gold-400: 245 158 11;    /* #f59e0b  amber-500  — btn hover bg  8.3:1 ✅ */
+  --gold-500: 217 119 6;     /* #d97706  amber-600  — btn default   5.6:1 ✅ */
+  --gold-600: 180 83 9;      /* #b45309  amber-700  — pressed state        */
+}
+
+/* ── Light mode text overrides ─────────────────────────────────────────────────
+   Tailwind's built-in slate/white classes don't respond to CSS variables,
+   so we override them directly. Specificity beats the generated utilities
+   without needing !important (html.light .class = 2 classes vs 1).
+   ─────────────────────────────────────────────────────────────────────────── */
+html.light .text-white     { color: #0f172a; }   /* headings, team names  17.9:1 ✅ */
+html.light .text-slate-100 { color: #1e293b; }  /* 14.6:1 ✅ */
+html.light .text-slate-200 { color: #334155; }  /* 10.4:1 ✅ */
+html.light .text-slate-300 { color: #475569; }  /*  7.6:1 ✅ */
+html.light .text-slate-400 { color: #64748b; }  /*  4.8:1 ✅ */
+html.light .text-slate-500 { color: #64748b; }  /*  4.8:1 ✅  was #94a3b8 = 2.6:1 ❌ */
+html.light .text-slate-600 { color: #475569; }  /*  7.6:1 ✅  was #94a3b8 = 2.6:1 ❌ */
+
+/* Gold text must be darker than the gold backgrounds above to pass AA on white.
+   bg-gold-* (buttons) uses the CSS variable — text-gold-* overridden here.    */
+html.light .text-gold-400  { color: #b45309; }  /*  5.0:1 on white ✅  amber-700 */
+html.light .text-gold-500  { color: #92400e; }  /*  7.1:1 on white ✅  amber-800 */
+
+/* Hover text overrides (Tailwind escapes `:` as `\:` in class names) */
+html.light .hover\:text-slate-100:hover { color: #1e293b; }
+html.light .hover\:text-slate-200:hover { color: #334155; }
+html.light .hover\:text-slate-300:hover { color: #475569; }
+
+/* btn-primary/tab-active use text-pitch-900 which in light mode = #f1f5f9.
+   Force it back to near-black so text stays readable on gold/amber buttons. */
+html.light .btn-primary  { color: #0f172a; }
+html.light .tab-active   { color: #0f172a; }
+
+/* Card shadow — gives depth in light mode where border alone is subtle */
+html.light .card {
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,.08), 0 1px 2px -1px rgba(0,0,0,.06);
+}
+
+/* ── Base styles ────────────────────────────────────────────────────────────── */
 @layer base {
   body {
     @apply bg-pitch-900 text-slate-100 min-h-screen;
@@ -18,6 +85,7 @@
   }
 }
 
+/* ── Component classes ──────────────────────────────────────────────────────── */
 @layer components {
   .score-input {
     @apply w-12 h-12 text-center text-xl font-bold rounded-lg border-2 bg-pitch-800
@@ -48,13 +116,24 @@
   }
 }
 
+/* ── Animations ─────────────────────────────────────────────────────────────── */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* News ticker — content is duplicated in JSX so -50% loops seamlessly */
+.ticker-inner {
+  animation: ticker-scroll 25s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .group-badge-A { @apply bg-red-600; }

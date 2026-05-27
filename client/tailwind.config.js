@@ -4,16 +4,17 @@ export default {
   theme: {
     extend: {
       colors: {
+        // CSS-variable driven so dark ↔ light flips without touching components
         pitch: {
-          900: '#0a1628',
-          800: '#0f2240',
-          700: '#163058',
-          600: '#1e4080',
+          900: 'rgb(var(--pitch-900) / <alpha-value>)',
+          800: 'rgb(var(--pitch-800) / <alpha-value>)',
+          700: 'rgb(var(--pitch-700) / <alpha-value>)',
+          600: 'rgb(var(--pitch-600) / <alpha-value>)',
         },
         gold: {
-          400: '#f5c842',
-          500: '#e8b800',
-          600: '#c99a00',
+          400: 'rgb(var(--gold-400) / <alpha-value>)',
+          500: 'rgb(var(--gold-500) / <alpha-value>)',
+          600: 'rgb(var(--gold-600) / <alpha-value>)',
         },
         emerald: {
           custom: '#00b34a',

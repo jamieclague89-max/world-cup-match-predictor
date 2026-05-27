@@ -212,7 +212,7 @@ export const KNOCKOUT_ROUNDS = [
   },
   {
     name: 'Final',
-    dates: 'Jul 19, 2026',
+    dates: 'Jul 26, 2026',
     matches: [{ id: 'FINAL', homeTeam: 'TBD', awayTeam: 'TBD', note: 'MetLife Stadium, East Rutherford NJ' }],
   },
 ];
