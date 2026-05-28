@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FIXTURES, TEAMS } from '../data/wc2026';
 import { SQUADS } from '../data/squads';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -727,43 +727,32 @@ function EmailPanel() {
   const [results, setResults]         = useState({});
   const [reminderDate, setReminderDate] = useState('2026-06-11'); // first match day as default test date
 
-  // Jules Rimet invite state — code is stored in the database
-  const [jrEmails,       setJrEmails]       = useState('');
-  const [jrLeagueCode,   setJrLeagueCode]   = useState('');
-  const [jrCodeLoading,  setJrCodeLoading]  = useState(true);
-  const [jrCodeSaving,   setJrCodeSaving]   = useState(false);
-  const [jrSending,      setJrSending]      = useState(false);
-  const [jrResult,       setJrResult]       = useState('');
+  // Jules Rimet invite state — league selected from existing leagues in the DB
+  const [jrEmails,        setJrEmails]        = useState('');
+  const [jrLeagueCode,    setJrLeagueCode]    = useState('');
+  const [jrLeagues,       setJrLeagues]       = useState([]);   // all leagues from DB
+  const [jrLeaguesLoading, setJrLeaguesLoading] = useState(true);
+  const [jrSending,       setJrSending]       = useState(false);
+  const [jrResult,        setJrResult]        = useState('');
 
-  // Load saved JR league code from the database on mount
+  // Load all leagues from Supabase so admin can pick the Jules Rimet one
   useEffect(() => {
-    getAuthHeaders().then(headers =>
-      fetch('/api/admin/settings/jr_league_code', { headers })
-        .then(r => r.json())
-        .then(d => { if (d.value) setJrLeagueCode(d.value); })
-        .catch(() => {})
-        .finally(() => setJrCodeLoading(false))
-    );
+    supabase
+      .from('leagues')
+      .select('code, name')
+      .order('name')
+      .then(({ data }) => {
+        setJrLeagues(data || []);
+        // Auto-select if there's only one league, or one with "Jules" in the name
+        if (data?.length === 1) {
+          setJrLeagueCode(data[0].code);
+        } else {
+          const jr = data?.find(l => l.name.toLowerCase().includes('jules'));
+          if (jr) setJrLeagueCode(jr.code);
+        }
+      })
+      .finally(() => setJrLeaguesLoading(false));
   }, []);
-
-  // Debounced save of the league code to the database
-  const jrSaveTimer = useRef(null);
-  function handleJrCodeChange(val) {
-    setJrLeagueCode(val);
-    clearTimeout(jrSaveTimer.current);
-    if (!val.trim()) return;
-    setJrCodeSaving(true);
-    jrSaveTimer.current = setTimeout(async () => {
-      try {
-        await fetch('/api/admin/settings/jr_league_code', {
-          method: 'POST',
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({ value: val }),
-        });
-      } catch {}
-      setJrCodeSaving(false);
-    }, 800);
-  }
 
   async function sendJulesRimetInvite() {
     setJrSending(true);
@@ -914,29 +903,31 @@ function EmailPanel() {
 
           <div className="space-y-2.5">
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-slate-400 font-semibold">League Code</label>
-                <span className="text-xs">
-                  {jrCodeLoading ? (
-                    <span className="text-slate-600">Loading…</span>
-                  ) : jrCodeSaving ? (
-                    <span className="text-slate-500">Saving…</span>
-                  ) : jrLeagueCode ? (
-                    <span className="text-green-500">✓ Saved to database</span>
-                  ) : null}
-                </span>
-              </div>
-              <input
-                type="text"
-                value={jrLeagueCode}
-                onChange={e => handleJrCodeChange(e.target.value.toUpperCase())}
-                placeholder={jrCodeLoading ? 'Loading…' : 'e.g. XKQT7F — saved automatically'}
-                disabled={jrCodeLoading}
-                maxLength={8}
-                className="w-full bg-pitch-900 border border-pitch-600 rounded px-3 py-2 text-white text-sm
-                           font-mono tracking-widest placeholder-slate-600
-                           focus:border-gold-400 focus:outline-none disabled:opacity-50"
-              />
+              <label className="text-xs text-slate-400 font-semibold block mb-1">League</label>
+              {jrLeaguesLoading ? (
+                <p className="text-slate-600 text-xs py-2">Loading leagues…</p>
+              ) : jrLeagues.length === 0 ? (
+                <p className="text-amber-400 text-xs py-2">
+                  No leagues found — create the Jules Rimet Jackpot league in the app first.
+                </p>
+              ) : (
+                <div className="relative">
+                  <select
+                    value={jrLeagueCode}
+                    onChange={e => setJrLeagueCode(e.target.value)}
+                    className="w-full appearance-none bg-pitch-900 border border-pitch-600 rounded px-3 py-2
+                               text-white text-sm focus:border-gold-400 focus:outline-none pr-8"
+                  >
+                    <option value="">— Select a league —</option>
+                    {jrLeagues.map(l => (
+                      <option key={l.code} value={l.code}>
+                        {l.name} ({l.code})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▼</span>
+                </div>
+              )}
             </div>
 
             <div>

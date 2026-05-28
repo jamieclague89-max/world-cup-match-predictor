@@ -532,32 +532,6 @@ app.post('/api/admin/email/daily-results', async (req, res) => {
   }
 });
 
-// ── App settings (admin only) ─────────────────────────────────────────────────
-
-// GET /api/admin/settings/:key — read a single setting value
-app.get('/api/admin/settings/:key', async (req, res) => {
-  if (!await verifyAdmin(req, res)) return;
-  const { data, error } = await supabase
-    .from('app_settings')
-    .select('value')
-    .eq('key', req.params.key)
-    .maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ value: data?.value ?? null });
-});
-
-// POST /api/admin/settings/:key — upsert a single setting value
-app.post('/api/admin/settings/:key', async (req, res) => {
-  if (!await verifyAdmin(req, res)) return;
-  const { value } = req.body;
-  if (value === undefined) return res.status(400).json({ error: 'value is required' });
-  const { error } = await supabase
-    .from('app_settings')
-    .upsert({ key: req.params.key, value: String(value), updated_at: new Date().toISOString() }, { onConflict: 'key' });
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ ok: true });
-});
-
 // POST /api/admin/email/jules-rimet-invite — send invite code to one or more paid entrants
 app.post('/api/admin/email/jules-rimet-invite', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
