@@ -365,12 +365,28 @@ async function sendDailyResultsEmail(supabase, dateOverride) {
     const fixtureMap = {};
     fixtures.forEach(f => { fixtureMap[f.id] = f; });
 
-    // Fetch leaderboard for rank/total points
+    // Fetch leaderboard for rank/total points (query Supabase directly — no localhost in serverless)
     let standings = [];
     try {
-      const sRes  = await fetch(`http://localhost:${process.env.PORT || 3001}/api/leaderboard`);
-      const sData = await sRes.json();
-      standings   = sData.standings || [];
+      const { data: scoreRows } = await supabase
+        .from('results')
+        .select('fixture_id, home_score, away_score, scorer');
+      const { data: predRows2 } = await supabase
+        .from('predictions')
+        .select('user_id, fixture_id, home_score, away_score, scorer');
+      const { data: profRows } = await supabase.from('profiles').select('id, name');
+      const scoreMap = {};
+      (scoreRows || []).forEach(r => { scoreMap[r.fixture_id] = r; });
+      const totals = {};
+      (predRows2 || []).forEach(pr => {
+        const result = scoreMap[pr.fixture_id];
+        if (!result) return;
+        const { points } = scoreMatch(pr, { home: result.home_score, away: result.away_score, scorer: result.scorer });
+        totals[pr.user_id] = (totals[pr.user_id] || 0) + points;
+      });
+      standings = (profRows || [])
+        .map(p => ({ name: p.name, points: totals[p.id] || 0 }))
+        .sort((a, b) => b.points - a.points);
     } catch { /* standings optional */ }
 
     // Fetch all profiles + their predictions for today's fixtures
@@ -523,10 +539,26 @@ async function sendWeeklyDigest(supabase) {
   try {
     let standings = [], resultsCount = 0;
     try {
-      const res  = await fetch(`http://localhost:${process.env.PORT || 3001}/api/leaderboard`);
-      const data = await res.json();
-      standings    = data.standings    || [];
-      resultsCount = data.resultsCount || 0;
+      const { data: scoreRows } = await supabase
+        .from('results')
+        .select('fixture_id, home_score, away_score, scorer');
+      const { data: predRows2 } = await supabase
+        .from('predictions')
+        .select('user_id, fixture_id, home_score, away_score, scorer');
+      const { data: profRows } = await supabase.from('profiles').select('id, name');
+      resultsCount = (scoreRows || []).length;
+      const scoreMap = {};
+      (scoreRows || []).forEach(r => { scoreMap[r.fixture_id] = r; });
+      const totals = {};
+      (predRows2 || []).forEach(pr => {
+        const result = scoreMap[pr.fixture_id];
+        if (!result) return;
+        const { points } = scoreMatch(pr, { home: result.home_score, away: result.away_score, scorer: result.scorer });
+        totals[pr.user_id] = (totals[pr.user_id] || 0) + points;
+      });
+      standings = (profRows || [])
+        .map(p => ({ name: p.name, points: totals[p.id] || 0 }))
+        .sort((a, b) => b.points - a.points);
     } catch { return; }
 
     if (resultsCount === 0) {
