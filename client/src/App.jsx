@@ -454,7 +454,7 @@ export default function App() {
             <MyResults predictions={predictions} />
           </>
         )}
-        {activeTab === 'league'      && <LeagueManager user={profile} predictions={predictions} />}
+        {activeTab === 'league'      && <LeagueManager user={profile} predictions={predictions} userEmail={session.user.email} />}
         {activeTab === 'rules'       && <RulesPage />}
         {activeTab === 'leaderboard' && <Leaderboard user={profile} />}
         {activeTab === 'admin'       && profile.is_admin && <AdminPage />}

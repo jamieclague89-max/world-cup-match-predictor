@@ -253,7 +253,7 @@ function StandingsTable({ standings, currentUser, isOwner, onSelectOpponent, onR
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function LeagueManager({ user, predictions }) {
+export default function LeagueManager({ user, predictions, userEmail }) {
   // Array of leagues the user belongs to: [{ code, name, createdBy? }]
   const [savedLeagues, setSavedLeagues] = useLocalStorage('wc2026_leagues', []);
 
@@ -312,11 +312,10 @@ export default function LeagueManager({ user, predictions }) {
   const [leagueInfo, setLeagueInfo] = useState(null); // server-side league metadata (includes created_by)
   const [loading, setLoading]       = useState(false);
 
-  // Jules Rimet Jackpot enquiry form state
-  const [jrEmail, setJrEmail]           = useState('');
-  const [jrLoading, setJrLoading]       = useState(false);
-  const [jrSubmitted, setJrSubmitted]   = useState(false);
-  const [jrError, setJrError]           = useState('');
+  // Jules Rimet Jackpot enquiry state
+  const [jrLoading, setJrLoading]     = useState(false);
+  const [jrSubmitted, setJrSubmitted] = useState(false);
+  const [jrError, setJrError]         = useState('');
 
   const activeLeague = savedLeagues.find(l => l.code === activeCode)
     || (leagueInfo ? { code: leagueInfo.code, name: leagueInfo.name } : null);
@@ -488,14 +487,13 @@ export default function LeagueManager({ user, predictions }) {
 
   // ── Jules Rimet Jackpot enquiry submit ──────────────────────────────────────
   async function submitJulesRimetEnquiry() {
-    if (!jrEmail.includes('@')) { setJrError('Please enter a valid email address'); return; }
     setJrLoading(true);
     setJrError('');
     try {
       const res = await fetch('/api/jules-rimet/enquire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: jrEmail }),
+        body: JSON.stringify({ email: userEmail }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send');
@@ -514,7 +512,7 @@ export default function LeagueManager({ user, predictions }) {
     return (
       <div className="animate-fade-in mt-6 max-w-md mx-auto">
         <button
-          onClick={() => { setJrSubmitted(false); setJrEmail(''); setJrError(''); navigate('/league'); }}
+          onClick={() => { setJrSubmitted(false); setJrError(''); navigate('/league'); }}
           className="text-slate-400 hover:text-white text-sm mb-5 block transition-colors"
         >
           ← My Leagues
@@ -557,42 +555,29 @@ export default function LeagueManager({ user, predictions }) {
               ))}
             </div>
 
-            {/* Enquiry form or success state */}
+            {/* Enquiry button or success state */}
             {jrSubmitted ? (
               <div className="text-center py-4">
                 <div className="text-4xl mb-3">✅</div>
-                <p className="text-white font-bold text-lg mb-1">Enquiry received!</p>
+                <p className="text-white font-bold text-lg mb-1">Request sent!</p>
                 <p className="text-slate-400 text-sm">
-                  Check your inbox — we'll send payment details within 24 hours.
+                  Check your inbox — payment details have been sent to <strong className="text-white">{userEmail}</strong>.
                 </p>
               </div>
             ) : (
               <div className="space-y-3 pt-1">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Request joining details
-                </p>
-                <input
-                  type="email"
-                  value={jrEmail}
-                  onChange={e => { setJrEmail(e.target.value); setJrError(''); }}
-                  onKeyDown={e => e.key === 'Enter' && submitJulesRimetEnquiry()}
-                  placeholder="your@email.com"
-                  className="w-full bg-pitch-900 border-2 border-pitch-600 rounded-lg px-4 py-2.5
-                             text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none
-                             transition-colors text-sm"
-                />
                 {jrError && (
                   <p className="text-xs text-red-400">{jrError}</p>
                 )}
                 <button
                   onClick={submitJulesRimetEnquiry}
-                  disabled={jrLoading || !jrEmail}
+                  disabled={jrLoading}
                   className="btn-primary w-full py-3 font-bold disabled:opacity-50 text-sm"
                 >
-                  {jrLoading ? 'Sending…' : '📩 Send me joining details'}
+                  {jrLoading ? 'Sending…' : '📩 Request Details To Join'}
                 </button>
                 <p className="text-xs text-slate-600 text-center">
-                  We'll email you payment instructions and your invite code once confirmed.
+                  Payment details will be sent to <span className="text-slate-400">{userEmail}</span>
                 </p>
               </div>
             )}
