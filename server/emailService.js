@@ -331,7 +331,7 @@ function julesRimetPaymentHtml({ email }) {
     </table>
 
     <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
-      Thanks for signing up to the <strong style="color:#ffffff;">Jules Rimet Jackpot</strong>!
+      Thanks for your request to join the <strong style="color:#ffffff;">Jules Rimet Jackpot</strong>!
       Everything you need to secure your place is below — pay before the deadline and you'll receive
       your private invite code by email.
     </p>
