@@ -748,7 +748,7 @@ function EmailPanel() {
     {
       id: 'daily-prediction-reminder',
       label: '⏰ Send Daily Prediction Reminder',
-      desc: 'Emails users who haven\'t predicted today\'s fixtures. Auto-fires at 21:00 BST on match days.',
+      desc: 'Emails users who haven\'t predicted today\'s fixtures. Auto-fires at 00:01 BST and 09:00 BST on match days.',
     },
     {
       id: 'daily-results',
@@ -771,7 +771,7 @@ function EmailPanel() {
     <div className="card mb-6">
       <h3 className="text-sm font-bold text-white mb-1">✉️ Email Notifications</h3>
       <p className="text-slate-500 text-xs mb-4">
-        Prediction reminders auto-fire at 21:00 BST and results emails at 23:00 BST on match days.
+        Prediction reminders auto-fire at 00:01 BST and 09:00 BST, results emails at 23:00 BST on match days.
         Use these buttons to trigger any email manually at any time.
       </p>
       <div className="space-y-3">
