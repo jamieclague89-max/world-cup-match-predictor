@@ -444,13 +444,23 @@ function julesRimetPaymentHtml({ email, name }) {
       Questions? Simply reply to this email and we'll get back to you.
     </p>
 
-    <p style="margin:0;text-align:center;">
-      <a href="${APP_URL}/api/jules-rimet/payment-confirmed?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}"
-        style="display:inline-block;background:#5cb85c;color:#ffffff;font-weight:700;
-        font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
-        ✅ Payment Confirmed
-      </a>
-    </p>
+    <!-- Confirm payment CTA -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#ffffff;">
+          Once you've made your payment
+        </p>
+        <p style="margin:0 0 16px;font-size:13px;color:#8899aa;line-height:1.5;">
+          Click the button below to let us know — we'll verify your payment and send your invite code as soon as possible.
+        </p>
+        <a href="${APP_URL}/api/jules-rimet/payment-confirmed?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}"
+          style="display:inline-block;background:#5cb85c;color:#ffffff;font-weight:700;
+          font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+          ✅ Confirm Payment
+        </a>
+      </td></tr>
+    </table>
   `);
 }
 
