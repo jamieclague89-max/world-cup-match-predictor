@@ -487,6 +487,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
 
   // ── Jules Rimet Jackpot enquiry submit ──────────────────────────────────────
   async function submitJulesRimetEnquiry() {
+    const isResend = jrSubmitted; // already sent once — this is a resend
     setJrLoading(true);
     setJrError('');
     try {
@@ -498,6 +499,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send');
       setJrSubmitted(true);
+      if (isResend) toast.success('Payment details resent — check your inbox!');
     } catch (e) {
       setJrError(e.message);
     } finally {
@@ -557,12 +559,38 @@ export default function LeagueManager({ user, predictions, userEmail }) {
 
             {/* Enquiry button or success state */}
             {jrSubmitted ? (
-              <div className="text-center py-4">
-                <div className="text-4xl mb-3">✅</div>
-                <p className="text-white font-bold text-lg mb-1">Request sent!</p>
-                <p className="text-slate-400 text-sm">
-                  Check your inbox — payment details have been sent to <strong className="text-white">{userEmail}</strong>.
-                </p>
+              <div className="space-y-4 pt-1">
+                {/* Success confirmation */}
+                <div className="text-center py-3">
+                  <div className="text-4xl mb-3">✅</div>
+                  <p className="text-white font-bold text-lg mb-1">Request sent!</p>
+                  <p className="text-slate-400 text-sm">
+                    Payment details have been sent to <strong className="text-white">{userEmail}</strong>.
+                    Check your inbox (and spam folder).
+                  </p>
+                </div>
+
+                {/* Didn't receive it? */}
+                <div className="border-t border-pitch-700 pt-4 space-y-2">
+                  <p className="text-xs text-slate-500 text-center">Didn't receive it?</p>
+                  <button
+                    onClick={submitJulesRimetEnquiry}
+                    disabled={jrLoading}
+                    className="w-full py-2.5 px-4 rounded-xl border border-pitch-600 text-slate-300
+                               hover:border-gold-500/50 hover:text-gold-400 transition-all text-sm
+                               font-semibold disabled:opacity-50"
+                  >
+                    {jrLoading ? 'Sending…' : '↺ Resend payment details'}
+                  </button>
+                  <a
+                    href={`mailto:jamieclague89@gmail.com?subject=${encodeURIComponent('Jules Rimet Jackpot — email not received')}&body=${encodeURIComponent(`Hi,\n\nI requested joining details for the Jules Rimet Jackpot but haven't received the email.\n\nMy account email is: ${userEmail}\nMy name is: ${user.name}\n\nCould you please send the payment details?\n\nThanks`)}`}
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-4 rounded-xl
+                               border border-pitch-600 text-slate-400 hover:border-gold-500/50
+                               hover:text-gold-400 transition-all text-sm font-semibold"
+                  >
+                    ✉️ Contact admin for help
+                  </a>
+                </div>
               </div>
             ) : (
               <div className="space-y-3 pt-1">
