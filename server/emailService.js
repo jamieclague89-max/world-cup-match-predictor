@@ -311,6 +311,104 @@ function weeklyDigestHtml({ name, standings, resultsCount, userRank }) {
   `);
 }
 
+// ── Template: Jules Rimet Jackpot — admin notification ───────────────────────
+function julesRimetAdminHtml({ userEmail }) {
+  const timestamp = new Date().toLocaleString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  });
+
+  return baseTemplate('Jules Rimet Jackpot — new enquiry', `
+    <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">New league enquiry received</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#c9a227;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0;font-size:28px;">🏆</p>
+        <p style="margin:8px 0 0;font-size:18px;font-weight:900;color:#0f1923;">
+          Jules Rimet Jackpot
+        </p>
+        <p style="margin:4px 0 0;font-size:13px;color:#6b4a00;">New paid league enquiry</p>
+      </td></tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:20px;">
+        <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Email address</p>
+        <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">${userEmail}</p>
+      </td></tr>
+      <tr style="border-top:1px solid #1e2d3d;"><td style="padding:20px;">
+        <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Received</p>
+        <p style="margin:0;font-size:13px;color:#8899aa;">${timestamp}</p>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
+      Reply to <strong style="color:#ffffff;">${userEmail}</strong> with payment details and joining instructions.
+    </p>
+
+    <p style="margin:0;text-align:center;">
+      <a href="mailto:${userEmail}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
+        font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+        Reply to enquiry →
+      </a>
+    </p>
+  `);
+}
+
+// ── Template: Jules Rimet Jackpot — user confirmation ────────────────────────
+function julesRimetConfirmationHtml({ email }) {
+  return baseTemplate('Jules Rimet Jackpot — enquiry received', `
+    <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">Hi there,</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#c9a227;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:24px;text-align:center;">
+        <p style="margin:0;font-size:36px;">🏆</p>
+        <p style="margin:10px 0 0;font-size:22px;font-weight:900;color:#0f1923;">
+          Jules Rimet Jackpot
+        </p>
+        <p style="margin:6px 0 0;font-size:14px;color:#6b4a00;font-weight:600;">
+          World Cup 2026 Predictor — Premium League
+        </p>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 16px;font-size:14px;color:#8899aa;line-height:1.6;">
+      Thanks for your interest in the <strong style="color:#ffffff;">Jules Rimet Jackpot</strong>!
+      We've received your enquiry and will be in touch shortly with full details on how to pay and secure your spot.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:20px;">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:1px;">
+          What happens next
+        </p>
+        <ul style="margin:0;padding:0 0 0 16px;color:#8899aa;font-size:14px;line-height:2;">
+          <li>You'll receive payment details via email within <strong style="color:#ffffff;">24 hours</strong></li>
+          <li>Once payment is confirmed, you'll get a private invite code</li>
+          <li>Enter the code in the app under <strong style="color:#ffffff;">My League → Join League</strong></li>
+          <li>Compete against other paid members for the jackpot prize pool</li>
+        </ul>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 20px;font-size:13px;color:#8899aa;line-height:1.6;">
+      Your enquiry was registered to <strong style="color:#ffffff;">${email}</strong>.
+      If you have any questions in the meantime, simply reply to this email.
+    </p>
+
+    <p style="margin:0;text-align:center;">
+      <a href="${APP_URL}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
+        font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+        Back to the predictor →
+      </a>
+    </p>
+  `);
+}
+
 // ── Template: Daily prediction reminder ──────────────────────────────────────
 function dailyPredictionReminderHtml({ name, dateLabel, missingFixtures, totalToday }) {
   const allMissing = missingFixtures.length === totalToday;
@@ -784,4 +882,60 @@ async function sendDailyPredictionReminderEmail(supabase, dateOverride) {
   }
 }
 
-module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail };
+/**
+ * Send Jules Rimet Jackpot enquiry emails.
+ * - Notifies the admin with the user's email so they can follow up with payment details.
+ * - Sends a confirmation to the user explaining what happens next.
+ *
+ * @param {object} supabase  - Supabase admin client
+ * @param {string} userEmail - Email address submitted via the enquiry form
+ */
+async function sendJulesRimetEnquiry(supabase, userEmail) {
+  if (!isConfigured()) return;
+
+  const sends = [];
+
+  // 1. Notify the admin
+  try {
+    const { data: adminProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('is_admin', true)
+      .maybeSingle();
+
+    if (adminProfile) {
+      const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const adminUser  = authData?.users?.find(u => u.id === adminProfile.id);
+      const adminEmail = adminUser?.email;
+
+      if (adminEmail) {
+        sends.push(
+          resend.emails.send({
+            from:    FROM,
+            to:      adminEmail,
+            subject: `🏆 Jules Rimet Jackpot — new enquiry from ${userEmail}`,
+            html:    julesRimetAdminHtml({ userEmail }),
+          })
+        );
+      }
+    }
+  } catch (e) {
+    console.error('[email] Jules Rimet: could not fetch admin email:', e.message);
+  }
+
+  // 2. Confirmation to the user
+  sends.push(
+    resend.emails.send({
+      from:    FROM,
+      to:      userEmail,
+      subject: '🏆 Jules Rimet Jackpot — we\'ve received your enquiry',
+      html:    julesRimetConfirmationHtml({ email: userEmail }),
+    })
+  );
+
+  const results = await Promise.allSettled(sends);
+  const sent    = results.filter(r => r.status === 'fulfilled').length;
+  console.log(`[email] Jules Rimet enquiry (${userEmail}): ${sent}/${results.length} emails sent`);
+}
+
+module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry };

@@ -138,6 +138,37 @@ function ShareSheet({ code, leagueName }) {
   );
 }
 
+// ── Jules Rimet Jackpot promo tile ───────────────────────────────────────────
+function JulesRimetTile({ onOpen }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="w-full text-left rounded-2xl border border-gold-500/40 overflow-hidden
+                 bg-gradient-to-br from-gold-500/10 via-pitch-800 to-pitch-900
+                 hover:border-gold-500/70 hover:from-gold-500/15 transition-all group"
+    >
+      <div className="px-4 py-4 flex items-center gap-4">
+        <div className="text-3xl flex-shrink-0">🏆</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-white font-black text-base group-hover:text-gold-400 transition-colors">
+              Jules Rimet Jackpot
+            </span>
+            <span className="text-xs font-bold text-gold-400 bg-gold-500/15 border border-gold-500/30
+                             rounded-full px-2 py-0.5 flex-shrink-0">
+              Paid
+            </span>
+          </div>
+          <p className="text-slate-400 text-xs">
+            Winner-takes-all premium league — limited places available
+          </p>
+        </div>
+        <span className="text-gold-400 text-xl flex-shrink-0 group-hover:translate-x-0.5 transition-transform">›</span>
+      </div>
+    </button>
+  );
+}
+
 // ── Standings table ───────────────────────────────────────────────────────────
 function StandingsTable({ standings, currentUser, isOwner, onSelectOpponent, onRemoveMember }) {
   if (standings.length === 0) {
@@ -244,13 +275,19 @@ export default function LeagueManager({ user, predictions }) {
   }, []);
 
   const [activeCode, setActiveCode] = useState(null);
-  const [view, setView]             = useState('list'); // 'list'|'home'|'create'|'join'|'standings'|'h2h'
+  const [view, setView]             = useState('list'); // 'list'|'home'|'create'|'join'|'standings'|'h2h'|'jules-rimet'
   const [leagueName, setLeagueName] = useState('');
   const [joinCode, setJoinCode]     = useState('');
   const [standings, setStandings]   = useState(null);
   const [leagueInfo, setLeagueInfo] = useState(null); // server-side league metadata (includes created_by)
   const [loading, setLoading]       = useState(false);
   const [opponent, setOpponent]     = useState(null);
+
+  // Jules Rimet Jackpot enquiry form state
+  const [jrEmail, setJrEmail]           = useState('');
+  const [jrLoading, setJrLoading]       = useState(false);
+  const [jrSubmitted, setJrSubmitted]   = useState(false);
+  const [jrError, setJrError]           = useState('');
 
   const activeLeague = savedLeagues.find(l => l.code === activeCode) || null;
 
@@ -413,7 +450,129 @@ export default function LeagueManager({ user, predictions }) {
     }
   }
 
+  // ── Jules Rimet Jackpot enquiry submit ──────────────────────────────────────
+  async function submitJulesRimetEnquiry() {
+    if (!jrEmail.includes('@')) { setJrError('Please enter a valid email address'); return; }
+    setJrLoading(true);
+    setJrError('');
+    try {
+      const res = await fetch('/api/jules-rimet/enquire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: jrEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send');
+      setJrSubmitted(true);
+    } catch (e) {
+      setJrError(e.message);
+    } finally {
+      setJrLoading(false);
+    }
+  }
+
   // ── Views ────────────────────────────────────────────────────────────────────
+
+  // Jules Rimet Jackpot enquiry view
+  if (view === 'jules-rimet') {
+    return (
+      <div className="animate-fade-in mt-6 max-w-md mx-auto">
+        <button
+          onClick={() => { setView('list'); setJrSubmitted(false); setJrEmail(''); setJrError(''); }}
+          className="text-slate-400 hover:text-white text-sm mb-5 block transition-colors"
+        >
+          ← My Leagues
+        </button>
+
+        {/* Header card */}
+        <div className="rounded-2xl bg-gradient-to-br from-gold-500/20 via-pitch-800 to-pitch-900
+                        border border-gold-500/40 overflow-hidden mb-4">
+          <div className="bg-gradient-to-r from-gold-600/30 to-gold-500/10 px-6 py-5 text-center border-b border-gold-500/20">
+            <div className="text-5xl mb-2">🏆</div>
+            <h2 className="text-2xl font-black text-white">Jules Rimet Jackpot</h2>
+            <div className="inline-flex items-center gap-1.5 mt-2 bg-gold-500/20 border border-gold-500/40
+                            rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse" />
+              <span className="text-xs font-bold text-gold-400 uppercase tracking-wider">Premium Paid League</span>
+            </div>
+          </div>
+
+          <div className="px-6 py-5 space-y-4">
+            {/* Description */}
+            <p className="text-slate-300 text-sm leading-relaxed">
+              The <strong className="text-gold-400">Jules Rimet Jackpot</strong> is our exclusive premium competition —
+              a winner-takes-all league where every entry fee goes straight into the prize pot.
+              The player with the most points when the World Cup final whistle blows takes home the jackpot.
+            </p>
+
+            {/* How it works */}
+            <div className="bg-pitch-900/60 rounded-xl border border-pitch-700 p-4 space-y-2.5">
+              <p className="text-xs font-bold text-gold-400 uppercase tracking-wider mb-3">How it works</p>
+              {[
+                { icon: '💰', text: 'Pay a one-off entry fee to secure your place' },
+                { icon: '🔑', text: 'Receive a private invite code once payment is confirmed' },
+                { icon: '⚽', text: 'Predict every match — same scoring rules as the main app' },
+                { icon: '🏆', text: 'Highest points at full time wins the entire prize pool' },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-start gap-2.5">
+                  <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+                  <p className="text-sm text-slate-300">{text}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Spaces warning */}
+            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
+              <span className="text-amber-400 text-base flex-shrink-0">⚠️</span>
+              <p className="text-xs text-amber-300 font-medium">
+                Places are strictly limited — submit your email to receive payment details and secure your spot before they sell out.
+              </p>
+            </div>
+
+            {/* Enquiry form or success state */}
+            {jrSubmitted ? (
+              <div className="text-center py-4">
+                <div className="text-4xl mb-3">✅</div>
+                <p className="text-white font-bold text-lg mb-1">Enquiry received!</p>
+                <p className="text-slate-400 text-sm">
+                  Check your inbox — we'll send payment details within 24 hours.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Request joining details
+                </p>
+                <input
+                  type="email"
+                  value={jrEmail}
+                  onChange={e => { setJrEmail(e.target.value); setJrError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && submitJulesRimetEnquiry()}
+                  placeholder="your@email.com"
+                  className="w-full bg-pitch-900 border-2 border-pitch-600 rounded-lg px-4 py-2.5
+                             text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none
+                             transition-colors text-sm"
+                />
+                {jrError && (
+                  <p className="text-xs text-red-400">{jrError}</p>
+                )}
+                <button
+                  onClick={submitJulesRimetEnquiry}
+                  disabled={jrLoading || !jrEmail}
+                  className="btn-primary w-full py-3 font-bold disabled:opacity-50 text-sm"
+                >
+                  {jrLoading ? 'Sending…' : '📩 Send me joining details'}
+                </button>
+                <p className="text-xs text-slate-600 text-center">
+                  We'll email you payment instructions and your invite code once confirmed.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // H2H view
   if (view === 'h2h' && opponent && activeCode) {
@@ -661,6 +820,8 @@ export default function LeagueManager({ user, predictions }) {
               <li>📏 <strong className="text-slate-300">Correct score, wrong winner</strong> — 1 pt</li>
             </ul>
           </div>
+
+          <JulesRimetTile onOpen={() => setView('jules-rimet')} />
         </>
       ) : (
         /* ── Leagues list ── */
@@ -696,6 +857,8 @@ export default function LeagueManager({ user, predictions }) {
               </button>
             ))}
           </div>
+
+          <JulesRimetTile onOpen={() => setView('jules-rimet')} />
 
           {/* Always-visible create + join buttons */}
           <div className="grid grid-cols-2 gap-3">

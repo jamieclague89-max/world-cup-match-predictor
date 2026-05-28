@@ -432,6 +432,22 @@ app.post('/api/leaderboard/results', async (req, res) => {
   res.json({ message: 'Results updated', total: data?.length || 0 });
 });
 
+// ── Jules Rimet Jackpot enquiry ───────────────────────────────────────────────
+// Public endpoint — no auth required (user is just submitting their email)
+app.post('/api/jules-rimet/enquire', async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+  const { email } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'A valid email address is required' });
+
+  try {
+    await emailService.sendJulesRimetEnquiry(supabase, email.trim().toLowerCase());
+    res.json({ message: 'Details sent! Check your inbox.' });
+  } catch (e) {
+    console.error('[email] Jules Rimet enquiry error:', e.message);
+    res.status(500).json({ error: 'Failed to send — please try again' });
+  }
+});
+
 // ── Admin email triggers ──────────────────────────────────────────────────────
 
 // POST /api/admin/email/reminder — send prediction reminder to all users with gaps
