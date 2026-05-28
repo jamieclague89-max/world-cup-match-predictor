@@ -541,21 +541,23 @@ export default function LeagueManager({ user, predictions, userEmail }) {
               The player with the most points when the World Cup final whistle blows takes home the jackpot.
             </p>
 
-            {/* How it works */}
-            <div className="bg-pitch-900/60 rounded-xl border border-pitch-700 p-4 space-y-2.5">
-              <p className="text-xs font-bold text-gold-400 uppercase tracking-wider mb-3">How it works</p>
-              {[
-                { icon: '💰', text: 'Pay a one-off entry fee to secure your place' },
-                { icon: '🔑', text: 'Receive a private invite code once payment is confirmed' },
-                { icon: '⚽', text: 'Predict every match to score points and climb the league table' },
-                { icon: '🏆', text: 'Highest points at the end of the tournament wins the entire prize pool' },
-              ].map(({ icon, text }) => (
-                <div key={text} className="flex items-start gap-2.5">
-                  <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
-                  <p className="text-sm text-slate-300">{text}</p>
-                </div>
-              ))}
-            </div>
+            {/* How it works — hidden once request is sent to keep success state visible */}
+            {!jrSubmitted && (
+              <div className="bg-pitch-900/60 rounded-xl border border-pitch-700 p-4 space-y-2.5">
+                <p className="text-xs font-bold text-gold-400 uppercase tracking-wider mb-3">How it works</p>
+                {[
+                  { icon: '💰', text: 'Pay a one-off entry fee to secure your place' },
+                  { icon: '🔑', text: 'Receive a private invite code once payment is confirmed' },
+                  { icon: '⚽', text: 'Predict every match to score points and climb the league table' },
+                  { icon: '🏆', text: 'Highest points at the end of the tournament wins the entire prize pool' },
+                ].map(({ icon, text }) => (
+                  <div key={text} className="flex items-start gap-2.5">
+                    <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+                    <p className="text-sm text-slate-300">{text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Enquiry button or success state */}
             {jrSubmitted ? (
