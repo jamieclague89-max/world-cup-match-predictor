@@ -811,6 +811,8 @@ export default function LeagueManager({ user, predictions }) {
             </button>
           </div>
 
+          <JulesRimetTile onOpen={() => setView('jules-rimet')} />
+
           <div className="card border-pitch-600/50">
             <h3 className="text-sm font-bold text-slate-300 mb-3">How it works</h3>
             <ul className="text-slate-400 text-xs space-y-2">
@@ -820,8 +822,6 @@ export default function LeagueManager({ user, predictions }) {
               <li>📏 <strong className="text-slate-300">Correct score, wrong winner</strong> — 1 pt</li>
             </ul>
           </div>
-
-          <JulesRimetTile onOpen={() => setView('jules-rimet')} />
         </>
       ) : (
         /* ── Leagues list ── */
