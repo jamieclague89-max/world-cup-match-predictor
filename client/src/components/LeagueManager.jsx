@@ -160,7 +160,7 @@ function JulesRimetTile({ onOpen }) {
             </span>
           </div>
           <p className="text-slate-400 text-xs">
-            Winner-takes-all premium league — limited places available
+            Winner-takes-all premium league — open to all
           </p>
         </div>
         <span className="text-gold-400 text-xl flex-shrink-0 group-hover:translate-x-0.5 transition-transform">›</span>
@@ -519,14 +519,6 @@ export default function LeagueManager({ user, predictions }) {
                   <p className="text-sm text-slate-300">{text}</p>
                 </div>
               ))}
-            </div>
-
-            {/* Spaces warning */}
-            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
-              <span className="text-amber-400 text-base flex-shrink-0">⚠️</span>
-              <p className="text-xs text-amber-300 font-medium">
-                Places are strictly limited — submit your email to receive payment details and secure your spot before they sell out.
-              </p>
             </div>
 
             {/* Enquiry form or success state */}
