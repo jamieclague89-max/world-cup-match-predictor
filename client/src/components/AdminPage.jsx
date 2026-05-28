@@ -727,9 +727,11 @@ function EmailPanel() {
   const [results, setResults]         = useState({});
   const [reminderDate, setReminderDate] = useState('2026-06-11'); // first match day as default test date
 
-  // Jules Rimet invite state
+  // Jules Rimet invite state — code is remembered in localStorage once set
   const [jrEmails,     setJrEmails]     = useState('');
-  const [jrLeagueCode, setJrLeagueCode] = useState('');
+  const [jrLeagueCode, setJrLeagueCode] = useState(
+    () => localStorage.getItem('wc2026_jr_league_code') || ''
+  );
   const [jrSending,    setJrSending]    = useState(false);
   const [jrResult,     setJrResult]     = useState('');
 
@@ -882,12 +884,21 @@ function EmailPanel() {
 
           <div className="space-y-2.5">
             <div>
-              <label className="text-xs text-slate-400 font-semibold block mb-1">League Code</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-slate-400 font-semibold">League Code</label>
+                {jrLeagueCode && (
+                  <span className="text-xs text-green-500">✓ remembered</span>
+                )}
+              </div>
               <input
                 type="text"
                 value={jrLeagueCode}
-                onChange={e => setJrLeagueCode(e.target.value.toUpperCase())}
-                placeholder="e.g. XKQT7F"
+                onChange={e => {
+                  const val = e.target.value.toUpperCase();
+                  setJrLeagueCode(val);
+                  localStorage.setItem('wc2026_jr_league_code', val);
+                }}
+                placeholder="e.g. XKQT7F — saved automatically once entered"
                 maxLength={8}
                 className="w-full bg-pitch-900 border border-pitch-600 rounded px-3 py-2 text-white text-sm
                            font-mono tracking-widest placeholder-slate-600
