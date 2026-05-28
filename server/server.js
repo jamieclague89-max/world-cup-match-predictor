@@ -420,6 +420,88 @@ app.get('/api/sync-status', async (req, res) => {
   res.json(resultsSync.getStatus());
 });
 
+// ── Admin analytics ──────────────────────────────────────────────────────────
+// Returns combined app stats (Supabase) + Vercel web analytics traffic data.
+app.get('/api/admin/analytics', async (req, res) => {
+  if (!await verifyAdmin(req, res)) return;
+  try {
+    const sevenDaysAgo  = new Date(Date.now() - 7  * 24 * 60 * 60 * 1000).toISOString();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const today         = new Date().toISOString().split('T')[0];
+
+    // ── Supabase counts ───────────────────────────────────────────────────
+    const [
+      { count: totalUsers },
+      { count: totalPredictions },
+      { count: newUsersThisWeek },
+      { count: predictionsThisWeek },
+    ] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('predictions').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+      supabase.from('predictions').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+    ]);
+
+    // ── Top 5 predictors ─────────────────────────────────────────────────
+    const { data: allPreds } = await supabase.from('predictions').select('user_id');
+    const userCounts = {};
+    (allPreds || []).forEach(p => { userCounts[p.user_id] = (userCounts[p.user_id] || 0) + 1; });
+    const topUserIds = Object.entries(userCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([uid]) => uid);
+    let topPredictors = [];
+    if (topUserIds.length > 0) {
+      const { data: profileData } = await supabase
+        .from('profiles').select('id, display_name').in('id', topUserIds);
+      topPredictors = topUserIds.map(uid => ({
+        name: profileData?.find(p => p.id === uid)?.display_name || 'Unknown',
+        count: userCounts[uid],
+      }));
+    }
+
+    // ── Vercel web analytics (optional — requires VERCEL_TOKEN) ───────────
+    let vercelData = null;
+    const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
+    if (VERCEL_TOKEN) {
+      const TEAM_ID    = 'team_BCab7MCFobNktmenUREDB536';
+      const PROJECT_ID = 'prj_pSASc3dY9MStQOIn3dh8vIsyXfFV';
+      const params = `teamId=${TEAM_ID}&projectId=${PROJECT_ID}&from=${thirtyDaysAgo}&to=${today}&granularity=day`;
+      try {
+        const [tsRes, pagesRes] = await Promise.all([
+          fetch(`https://vercel.com/api/web-analytics/timeseries?${params}`,
+            { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }),
+          fetch(`https://vercel.com/api/web-analytics/breakdown?${params}&groupBy=path&limit=5`,
+            { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }),
+        ]);
+        vercelData = {
+          timeseries: tsRes.ok   ? await tsRes.json()   : null,
+          pages:      pagesRes.ok ? await pagesRes.json() : null,
+        };
+      } catch {
+        vercelData = { error: 'Could not reach Vercel API' };
+      }
+    }
+
+    res.json({
+      app: {
+        totalUsers:            totalUsers           ?? 0,
+        totalPredictions:      totalPredictions     ?? 0,
+        newUsersThisWeek:      newUsersThisWeek     ?? 0,
+        predictionsThisWeek:   predictionsThisWeek  ?? 0,
+        avgPredictionsPerUser: totalUsers
+          ? Math.round((totalPredictions / totalUsers) * 10) / 10
+          : 0,
+        topPredictors,
+      },
+      traffic: { hasToken: !!VERCEL_TOKEN, ...vercelData },
+    });
+  } catch (err) {
+    console.error('[analytics]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Vercel Cron endpoints ─────────────────────────────────────────────────────
 // These are called by Vercel Cron on a schedule (see vercel.json).
 // In local dev the equivalent background tasks run via start() / scheduleDailyEmail().

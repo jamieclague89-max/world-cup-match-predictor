@@ -1134,12 +1134,206 @@ function OddsManager() {
   );
 }
 
+// ── Analytics panel ───────────────────────────────────────────────────────────
+function AnalyticsPanel() {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/analytics', { headers: await getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed to load analytics');
+      setData(await res.json());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) {
+    return (
+      <div className="card text-center text-slate-500 py-12">
+        Loading analytics…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="card text-red-400 text-sm py-4 text-center">{error}</div>
+    );
+  }
+  if (!data) return null;
+
+  const { app, traffic } = data;
+  const timeseries  = traffic?.timeseries?.data || [];
+  const maxViews    = Math.max(...timeseries.map(d => d.total ?? 0), 1);
+  const totalViews  = timeseries.reduce((s, d) => s + (d.total    ?? 0), 0);
+  const totalVisits = timeseries.reduce((s, d) => s + (d.devices  ?? 0), 0);
+  const topPages    = traffic?.pages?.data || [];
+
+  const statCard = (label, value, color) => (
+    <div key={label} className="bg-pitch-800 border border-pitch-700 rounded-xl p-3">
+      <p className="text-slate-500 text-xs">{label}</p>
+      <p className={`${color} font-black text-2xl leading-none mt-1`}>{value}</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+
+      {/* ── App Overview ── */}
+      <div>
+        <h3 className="text-sm font-bold text-white mb-3">📊 App Overview</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {statCard('Total Users',            app.totalUsers,            'text-gold-400'  )}
+          {statCard('Total Predictions',      app.totalPredictions,      'text-green-400' )}
+          {statCard('Avg Predictions / User', app.avgPredictionsPerUser, 'text-blue-400'  )}
+          {statCard('New Users This Week',    app.newUsersThisWeek,      'text-gold-400'  )}
+          {statCard('Predictions This Week',  app.predictionsThisWeek,   'text-green-400' )}
+        </div>
+      </div>
+
+      {/* ── Top Predictors ── */}
+      {app.topPredictors.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-white mb-3">🏆 Most Active Predictors</h3>
+          <div className="bg-pitch-800 border border-pitch-700 rounded-xl overflow-hidden">
+            {app.topPredictors.map((u, i) => {
+              const pct = Math.round((u.count / (app.topPredictors[0]?.count || 1)) * 100);
+              return (
+                <div
+                  key={u.name}
+                  className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? 'border-t border-pitch-700' : ''}`}
+                >
+                  <span className="text-slate-600 text-xs font-mono w-4 flex-shrink-0">{i + 1}</span>
+                  <span className="text-white text-sm font-semibold flex-1 truncate">{u.name}</span>
+                  <div className="hidden sm:flex items-center gap-2 flex-shrink-0 w-32">
+                    <div className="flex-1 h-1.5 bg-pitch-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-gold-400 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                  <span className="text-gold-400 text-sm font-black flex-shrink-0">{u.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Vercel Traffic ── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-white">🌐 Website Traffic — Last 30 Days</h3>
+          <a
+            href="https://vercel.com/jamies-projects-e9bcb763/world-cup-match-predictor/analytics"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gold-400 hover:text-gold-300 transition-colors"
+          >
+            View in Vercel →
+          </a>
+        </div>
+
+        {!traffic.hasToken ? (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-4 text-xs text-amber-300">
+            <p className="font-semibold mb-2">⚙️ Setup required to show traffic data</p>
+            <ol className="text-amber-400/80 space-y-1 list-decimal list-inside">
+              <li>Go to Vercel → Account Settings → Tokens → Create Token</li>
+              <li>Add <span className="font-mono bg-amber-900/30 px-1 rounded">VERCEL_TOKEN=your_token</span> to <span className="font-mono">server/.env</span></li>
+              <li>Add <span className="font-mono bg-amber-900/30 px-1 rounded">VERCEL_TOKEN</span> to Vercel Environment Variables and redeploy</li>
+            </ol>
+          </div>
+        ) : traffic.error ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400">
+            <p className="font-semibold mb-1">Could not fetch Vercel analytics</p>
+            <p className="text-red-400/70">{traffic.error}</p>
+            <a
+              href="https://vercel.com/jamies-projects-e9bcb763/world-cup-match-predictor/analytics"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline mt-1 block"
+            >
+              View analytics directly in Vercel →
+            </a>
+          </div>
+        ) : timeseries.length === 0 ? (
+          <div className="bg-pitch-800 border border-pitch-700 rounded-xl px-4 py-8 text-center text-slate-500 text-sm">
+            No traffic data yet — analytics will appear once users visit the site.
+          </div>
+        ) : (
+          <>
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              {statCard('Page Views (30d)',      totalViews.toLocaleString(),  'text-blue-400'   )}
+              {statCard('Unique Visitors (30d)', totalVisits.toLocaleString(), 'text-purple-400' )}
+            </div>
+
+            {/* Daily bar chart */}
+            <div className="bg-pitch-800 border border-pitch-700 rounded-xl p-4 mb-3">
+              <p className="text-xs text-slate-500 mb-3 font-semibold uppercase tracking-wide">Daily Page Views</p>
+              <div className="flex items-end gap-0.5 h-20">
+                {timeseries.map(day => (
+                  <div
+                    key={day.key}
+                    title={`${day.key}: ${(day.total ?? 0).toLocaleString()} views`}
+                    className="flex-1 bg-gold-500/60 hover:bg-gold-400 transition-colors rounded-sm"
+                    style={{ height: `${Math.max(((day.total ?? 0) / maxViews) * 100, 2)}%`, minHeight: '2px' }}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between mt-1.5 text-xs text-slate-600">
+                <span>{timeseries[0]?.key?.slice(5)}</span>
+                <span>{timeseries[timeseries.length - 1]?.key?.slice(5)}</span>
+              </div>
+            </div>
+
+            {/* Top pages */}
+            {topPages.length > 0 && (
+              <div className="bg-pitch-800 border border-pitch-700 rounded-xl overflow-hidden">
+                <p className="text-xs text-slate-500 px-4 pt-3 pb-2 font-semibold uppercase tracking-wide">Top Pages</p>
+                {topPages.map((page, i) => {
+                  const pct = Math.round(((page.total ?? 0) / (topPages[0]?.total || 1)) * 100);
+                  return (
+                    <div key={page.key ?? i} className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? 'border-t border-pitch-700' : ''}`}>
+                      <span className="text-slate-300 text-xs font-mono flex-1 truncate">{page.key || '/'}</span>
+                      <div className="hidden sm:flex items-center gap-2 w-24 flex-shrink-0">
+                        <div className="flex-1 h-1.5 bg-pitch-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-400 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      <span className="text-blue-400 text-xs font-bold flex-shrink-0">{(page.total ?? 0).toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Refresh */}
+      <div className="flex justify-end pt-2 border-t border-pitch-700">
+        <button onClick={load} disabled={loading} className="btn-secondary text-xs py-1.5 px-4">
+          ↻ Refresh
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const ADMIN_TABS = [
   { id: 'results',       label: '📋 Results'       },
   { id: 'odds',          label: '🎰 Bookies Odds'   },
   { id: 'notifications', label: '🔔 Notifications'  },
   { id: 'emails',        label: '✉️ Emails'         },
   { id: 'fixtures',      label: '⚙️ Fixtures'       },
+  { id: 'analytics',     label: '📊 Analytics'      },
 ];
 
 export default function AdminPage() {
@@ -1232,6 +1426,9 @@ export default function AdminPage() {
 
       {/* ── Emails tab ────────────────────────────────────────────────────── */}
       {adminTab === 'emails' && <EmailPanel />}
+
+      {/* ── Analytics tab ─────────────────────────────────────────────────── */}
+      {adminTab === 'analytics' && <AnalyticsPanel />}
 
       {/* ── Fixtures tab ──────────────────────────────────────────────────── */}
       {adminTab === 'fixtures' && (
