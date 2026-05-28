@@ -144,6 +144,9 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Reset profile to undefined on sign-in so the loading screen shows
+        // while the profile is fetched — prevents a flash of the ProfileSetup page
+        if (event === 'SIGNED_IN') setProfile(undefined);
         setSession(session ?? null);
         if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       }
