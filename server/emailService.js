@@ -312,7 +312,7 @@ function weeklyDigestHtml({ name, standings, resultsCount, userRank }) {
 }
 
 // ── Template: Jules Rimet Jackpot — payment details email ────────────────────
-function julesRimetPaymentHtml({ email }) {
+function julesRimetPaymentHtml({ email, name }) {
   return baseTemplate('Jules Rimet Jackpot — how to pay', `
     <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">Hi there,</p>
 
@@ -379,9 +379,9 @@ function julesRimetPaymentHtml({ email }) {
       <tr>
         <td style="padding:16px 20px;">
           <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Payment reference</p>
-          <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#c9a227;font-family:monospace;">${email}</p>
+          <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#c9a227;font-family:monospace;">${name || email}</p>
           <p style="margin:0;font-size:12px;color:#8899aa;">
-            Use your email address as the reference so we can match your payment.
+            Use your name as the reference so we can match your payment.
           </p>
         </td>
       </tr>
@@ -933,7 +933,7 @@ async function sendDailyPredictionReminderEmail(supabase, dateOverride) {
  * @param {object} supabase  - Supabase admin client (unused, kept for consistent signature)
  * @param {string} userEmail - Email address submitted via the enquiry form
  */
-async function sendJulesRimetEnquiry(supabase, userEmail) {
+async function sendJulesRimetEnquiry(supabase, userEmail, userName) {
   if (!isConfigured()) return;
 
   try {
@@ -941,7 +941,7 @@ async function sendJulesRimetEnquiry(supabase, userEmail) {
       from:    FROM,
       to:      userEmail,
       subject: '🏆 Jules Rimet Jackpot — how to join & pay',
-      html:    julesRimetPaymentHtml({ email: userEmail }),
+      html:    julesRimetPaymentHtml({ email: userEmail, name: userName }),
     });
     console.log(`[email] Jules Rimet payment details sent to ${userEmail}`);
   } catch (err) {
