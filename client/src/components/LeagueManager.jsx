@@ -254,6 +254,24 @@ export default function LeagueManager({ user, predictions }) {
 
   const activeLeague = savedLeagues.find(l => l.code === activeCode) || null;
 
+  // Fetch league metadata (including created_by) as soon as a league is opened.
+  // This resolves ownership before standings are ever loaded.
+  useEffect(() => {
+    if (!activeCode) return;
+    apiFetch(`/leagues/${activeCode}`)
+      .then(data => {
+        setLeagueInfo(data.league);
+        // Persist createdBy into savedLeagues so it survives page refreshes
+        setSavedLeagues(prev => prev.map(l =>
+          l.code === activeCode
+            ? { ...l, createdBy: data.league.created_by }
+            : l
+        ));
+      })
+      .catch(() => {}); // fail silently — isOwner just stays false
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCode]);
+
   // Is the current user the creator of the active league?
   const isOwner = !!(
     leagueInfo?.created_by === user.id ||

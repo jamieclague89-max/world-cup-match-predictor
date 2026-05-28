@@ -83,6 +83,20 @@ app.post('/api/leagues', async (req, res) => {
   res.json({ code, league });
 });
 
+// ── Get league metadata (name, created_by) ───────────────────────────────────
+app.get('/api/leagues/:code', async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+  const code = req.params.code.toUpperCase();
+  const { data: league, error } = await supabase
+    .from('leagues')
+    .select('code, name, created_by')
+    .eq('code', code)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!league) return res.status(404).json({ error: 'League not found' });
+  res.json({ league });
+});
+
 // ── Join a league ─────────────────────────────────────────────────────────────
 app.post('/api/leagues/:code/join', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
