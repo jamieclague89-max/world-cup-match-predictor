@@ -457,6 +457,7 @@ export default function App() {
             user={profile}
             session={session}
             onProfileUpdate={setProfile}
+            onLogout={handleLogout}
           />
         )}
       </main>

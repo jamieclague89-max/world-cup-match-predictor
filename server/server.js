@@ -420,6 +420,36 @@ app.get('/api/sync-status', async (req, res) => {
   res.json(resultsSync.getStatus());
 });
 
+// ── Delete own account ───────────────────────────────────────────────────────
+// Verifies the caller's JWT, wipes all their data, then removes the auth user.
+app.delete('/api/user/account', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  const token = auth.slice(7);
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const uid = user.id;
+  try {
+    // Delete user data in parallel where safe
+    await Promise.all([
+      supabase.from('predictions').delete().eq('user_id', uid),
+      supabase.from('notifications').delete().eq('user_id', uid),
+      supabase.from('user_preferences').delete().eq('user_id', uid),
+      supabase.from('league_members').delete().eq('user_id', uid),
+    ]);
+    // Profile must go after league_members (FK)
+    await supabase.from('profiles').delete().eq('id', uid);
+    // Finally remove the auth user (requires service role)
+    const { error: delErr } = await supabase.auth.admin.deleteUser(uid);
+    if (delErr) throw delErr;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[delete-account]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Admin analytics ──────────────────────────────────────────────────────────
 // Returns combined app stats (Supabase) + Vercel web analytics traffic data.
 app.get('/api/admin/analytics', async (req, res) => {

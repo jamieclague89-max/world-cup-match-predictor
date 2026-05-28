@@ -47,7 +47,7 @@ function Input({ value, onChange, type = 'text', placeholder, disabled, ...rest 
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function SettingsPage({ user, session, onProfileUpdate }) {
+export default function SettingsPage({ user, session, onProfileUpdate, onLogout }) {
   // ── Display name ───────────────────────────────────────────────────────────
   const [displayName,  setDisplayName]  = useState(user?.name || '');
   const [nameSaving,   setNameSaving]   = useState(false);
@@ -96,9 +96,33 @@ export default function SettingsPage({ user, session, onProfileUpdate }) {
   }
 
   // ── Delete account ─────────────────────────────────────────────────────────
-  const [deletePhrase, setDeletePhrase] = useState('');
+  const [deletePhrase,  setDeletePhrase]  = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const DELETE_PHRASE = 'delete my account';
   const deleteReady = deletePhrase.toLowerCase() === DELETE_PHRASE;
+
+  async function handleDeleteAccount() {
+    if (!deleteReady || deleteLoading) return;
+    setDeleteLoading(true);
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const res = await fetch('/api/user/account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentSession?.access_token ?? ''}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+      await supabase.auth.signOut();
+      toast.success('Your account has been deleted.');
+      onLogout?.();
+    } catch (err) {
+      toast.error(`Could not delete account: ${err.message}`);
+      setDeleteLoading(false);
+    }
+  }
 
   return (
     <div className="max-w-xl mx-auto pt-6 pb-16 px-2">
@@ -229,13 +253,13 @@ export default function SettingsPage({ user, session, onProfileUpdate }) {
             />
           </Field>
           <button
-            disabled={!deleteReady}
-            onClick={() => toast.error('Please contact support to delete your account.')}
+            disabled={!deleteReady || deleteLoading}
+            onClick={handleDeleteAccount}
             className="mt-2 px-4 py-2.5 bg-red-600/80 hover:bg-red-600 disabled:bg-pitch-700
                        disabled:text-slate-500 text-white font-bold text-sm rounded-lg
                        transition-colors"
           >
-            Delete my account permanently
+            {deleteLoading ? 'Deleting…' : 'Delete my account permanently'}
           </button>
         </div>
       </div>
