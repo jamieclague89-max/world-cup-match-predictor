@@ -311,61 +311,16 @@ function weeklyDigestHtml({ name, standings, resultsCount, userRank }) {
   `);
 }
 
-// ── Template: Jules Rimet Jackpot — admin notification ───────────────────────
-function julesRimetAdminHtml({ userEmail }) {
-  const timestamp = new Date().toLocaleString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
-  });
-
-  return baseTemplate('Jules Rimet Jackpot — new enquiry', `
-    <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">New league enquiry received</p>
-
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:#c9a227;border-radius:12px;margin-bottom:20px;">
-      <tr><td style="padding:20px;text-align:center;">
-        <p style="margin:0;font-size:28px;">🏆</p>
-        <p style="margin:8px 0 0;font-size:18px;font-weight:900;color:#0f1923;">
-          Jules Rimet Jackpot
-        </p>
-        <p style="margin:4px 0 0;font-size:13px;color:#6b4a00;">New paid league enquiry</p>
-      </td></tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
-      <tr><td style="padding:20px;">
-        <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Email address</p>
-        <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">${userEmail}</p>
-      </td></tr>
-      <tr style="border-top:1px solid #1e2d3d;"><td style="padding:20px;">
-        <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Received</p>
-        <p style="margin:0;font-size:13px;color:#8899aa;">${timestamp}</p>
-      </td></tr>
-    </table>
-
-    <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
-      Reply to <strong style="color:#ffffff;">${userEmail}</strong> with payment details and joining instructions.
-    </p>
-
-    <p style="margin:0;text-align:center;">
-      <a href="mailto:${userEmail}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
-        font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
-        Reply to enquiry →
-      </a>
-    </p>
-  `);
-}
-
-// ── Template: Jules Rimet Jackpot — user confirmation ────────────────────────
-function julesRimetConfirmationHtml({ email }) {
-  return baseTemplate('Jules Rimet Jackpot — enquiry received', `
+// ── Template: Jules Rimet Jackpot — payment details email ────────────────────
+function julesRimetPaymentHtml({ email }) {
+  return baseTemplate('Jules Rimet Jackpot — how to pay', `
     <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">Hi there,</p>
 
+    <!-- Hero -->
     <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:#c9a227;border-radius:12px;margin-bottom:20px;">
+      style="background:#c9a227;border-radius:12px;margin-bottom:24px;">
       <tr><td style="padding:24px;text-align:center;">
-        <p style="margin:0;font-size:36px;">🏆</p>
+        <p style="margin:0;font-size:40px;">🏆</p>
         <p style="margin:10px 0 0;font-size:22px;font-weight:900;color:#0f1923;">
           Jules Rimet Jackpot
         </p>
@@ -375,29 +330,118 @@ function julesRimetConfirmationHtml({ email }) {
       </td></tr>
     </table>
 
-    <p style="margin:0 0 16px;font-size:14px;color:#8899aa;line-height:1.6;">
-      Thanks for your interest in the <strong style="color:#ffffff;">Jules Rimet Jackpot</strong>!
-      We've received your enquiry and will be in touch shortly with full details on how to pay and secure your spot.
+    <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
+      Thanks for signing up to the <strong style="color:#ffffff;">Jules Rimet Jackpot</strong>!
+      Everything you need to secure your place is below — pay before the deadline and you'll receive
+      your private invite code by email.
     </p>
 
+    <!-- Payment details -->
+    <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#8899aa;text-transform:uppercase;letter-spacing:1px;">
+      Payment details
+    </p>
     <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
-      <tr><td style="padding:20px;">
-        <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:1px;">
-          What happens next
+      style="background:#0f1923;border-radius:12px;margin-bottom:24px;overflow:hidden;">
+
+      <!-- Entry fee -->
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1e2d3d;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Entry fee</p>
+          <p style="margin:0;font-size:28px;font-weight:900;color:#c9a227;">£10.00</p>
+        </td>
+      </tr>
+
+      <!-- Payment method -->
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1e2d3d;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Payment method</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">Revolut</p>
+        </td>
+      </tr>
+
+      <!-- Account number -->
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1e2d3d;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Account number</p>
+          <p style="margin:0;font-size:20px;font-weight:900;color:#ffffff;font-family:monospace;letter-spacing:0.05em;">54170109</p>
+        </td>
+      </tr>
+
+      <!-- Sort code -->
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1e2d3d;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Sort code</p>
+          <p style="margin:0;font-size:20px;font-weight:900;color:#ffffff;font-family:monospace;letter-spacing:0.05em;">04-00-75</p>
+        </td>
+      </tr>
+
+      <!-- Reference -->
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Payment reference</p>
+          <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#c9a227;font-family:monospace;">[Your Name] WC26</p>
+          <p style="margin:0;font-size:12px;color:#8899aa;">
+            e.g. <span style="color:#ffffff;font-weight:600;">Jamie WC26</span> — use your own name so we can match your payment.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Deadline -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#e05252;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 2px;font-size:11px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1px;font-weight:700;">
+          ⏰ Payment deadline
         </p>
-        <ul style="margin:0;padding:0 0 0 16px;color:#8899aa;font-size:14px;line-height:2;">
-          <li>You'll receive payment details via email within <strong style="color:#ffffff;">24 hours</strong></li>
-          <li>Once payment is confirmed, you'll get a private invite code</li>
-          <li>Enter the code in the app under <strong style="color:#ffffff;">My League → Join League</strong></li>
-          <li>Compete against other paid members for the jackpot prize pool</li>
-        </ul>
+        <p style="margin:0;font-size:18px;font-weight:900;color:#ffffff;">
+          18 June 2026 at 23:59
+        </p>
+        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.75);">
+          Places are limited — late payments cannot be accepted.
+        </p>
       </td></tr>
     </table>
 
-    <p style="margin:0 0 20px;font-size:13px;color:#8899aa;line-height:1.6;">
-      Your enquiry was registered to <strong style="color:#ffffff;">${email}</strong>.
-      If you have any questions in the meantime, simply reply to this email.
+    <!-- What happens next -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:20px;">
+        <p style="margin:0 0 14px;font-size:11px;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:1px;">
+          What happens after you pay
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;width:24px;font-size:18px;">1️⃣</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Send <strong style="color:#ffffff;">£10</strong> via Revolut using the details above
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;font-size:18px;">2️⃣</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              We'll verify your payment and email your <strong style="color:#ffffff;">private invite code</strong>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;font-size:18px;">3️⃣</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Enter the code in the app under
+              <strong style="color:#ffffff;">My League → Join League</strong>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;font-size:18px;">🏆</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Predict every match — highest points when the final whistle blows wins the <strong style="color:#c9a227;">jackpot!</strong>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 24px;font-size:13px;color:#8899aa;line-height:1.6;text-align:center;">
+      Questions? Simply reply to this email and we'll get back to you.
     </p>
 
     <p style="margin:0;text-align:center;">
@@ -883,59 +927,27 @@ async function sendDailyPredictionReminderEmail(supabase, dateOverride) {
 }
 
 /**
- * Send Jules Rimet Jackpot enquiry emails.
- * - Notifies the admin with the user's email so they can follow up with payment details.
- * - Sends a confirmation to the user explaining what happens next.
+ * Send Jules Rimet Jackpot payment details to a user who submitted the enquiry form.
+ * Sends a single email with full payment instructions embedded.
  *
- * @param {object} supabase  - Supabase admin client
+ * @param {object} supabase  - Supabase admin client (unused, kept for consistent signature)
  * @param {string} userEmail - Email address submitted via the enquiry form
  */
 async function sendJulesRimetEnquiry(supabase, userEmail) {
   if (!isConfigured()) return;
 
-  const sends = [];
-
-  // 1. Notify the admin
   try {
-    const { data: adminProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('is_admin', true)
-      .maybeSingle();
-
-    if (adminProfile) {
-      const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-      const adminUser  = authData?.users?.find(u => u.id === adminProfile.id);
-      const adminEmail = adminUser?.email;
-
-      if (adminEmail) {
-        sends.push(
-          resend.emails.send({
-            from:    FROM,
-            to:      adminEmail,
-            subject: `🏆 Jules Rimet Jackpot — new enquiry from ${userEmail}`,
-            html:    julesRimetAdminHtml({ userEmail }),
-          })
-        );
-      }
-    }
-  } catch (e) {
-    console.error('[email] Jules Rimet: could not fetch admin email:', e.message);
-  }
-
-  // 2. Confirmation to the user
-  sends.push(
-    resend.emails.send({
+    await resend.emails.send({
       from:    FROM,
       to:      userEmail,
-      subject: '🏆 Jules Rimet Jackpot — we\'ve received your enquiry',
-      html:    julesRimetConfirmationHtml({ email: userEmail }),
-    })
-  );
-
-  const results = await Promise.allSettled(sends);
-  const sent    = results.filter(r => r.status === 'fulfilled').length;
-  console.log(`[email] Jules Rimet enquiry (${userEmail}): ${sent}/${results.length} emails sent`);
+      subject: '🏆 Jules Rimet Jackpot — how to join & pay',
+      html:    julesRimetPaymentHtml({ email: userEmail }),
+    });
+    console.log(`[email] Jules Rimet payment details sent to ${userEmail}`);
+  } catch (err) {
+    console.error('[email] Jules Rimet: failed to send payment email:', err.message);
+    throw err;
+  }
 }
 
 module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry };
