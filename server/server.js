@@ -434,6 +434,23 @@ app.post('/api/leaderboard/results', async (req, res) => {
 
 // ── Jules Rimet Jackpot enquiry ───────────────────────────────────────────────
 // Public endpoint — no auth required (user is just submitting their email)
+// User clicks "Payment Confirmed" in their Jules Rimet email → notify admin
+app.get('/api/jules-rimet/payment-confirmed', async (req, res) => {
+  const { email, name } = req.query;
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+
+  if (email) {
+    try {
+      await emailService.sendJulesRimetPaymentDeclared(supabase, email, name || '');
+    } catch (e) {
+      console.error('[jules-rimet] payment confirmed notification error:', e.message);
+    }
+  }
+
+  // Redirect the user back to the app regardless of email outcome
+  res.redirect(appUrl);
+});
+
 app.post('/api/jules-rimet/enquire', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
   const { email, name } = req.body;

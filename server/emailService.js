@@ -445,10 +445,58 @@ function julesRimetPaymentHtml({ email, name }) {
     </p>
 
     <p style="margin:0;text-align:center;">
-      <a href="${APP_URL}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
+      <a href="${APP_URL}/api/jules-rimet/payment-confirmed?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}"
+        style="display:inline-block;background:#5cb85c;color:#ffffff;font-weight:700;
         font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
-        Back to the predictor →
+        ✅ Payment Confirmed
       </a>
+    </p>
+  `);
+}
+
+// ── Template: Jules Rimet admin payment notification ─────────────────────────
+function julesRimetAdminNotificationHtml({ userEmail, userName }) {
+  return baseTemplate('Jules Rimet — payment declared', `
+    <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">Hi,</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#5cb85c;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0;font-size:36px;">💰</p>
+        <p style="margin:8px 0 0;font-size:20px;font-weight:900;color:#ffffff;">
+          Payment declared
+        </p>
+        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">
+          Jules Rimet Jackpot
+        </p>
+      </td></tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1e2d3d;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Name</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">${userName || '—'}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1e2d3d;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Email</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#c9a227;">${userEmail}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 2px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Expected reference</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;font-family:monospace;">${userName || userEmail}</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
+      Check your Revolut for a payment with the reference above.
+      Once confirmed, send them their private invite code.
     </p>
   `);
 }
@@ -950,4 +998,49 @@ async function sendJulesRimetEnquiry(supabase, userEmail, userName) {
   }
 }
 
-module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry };
+/**
+ * Notify the admin that a user has declared their Jules Rimet payment.
+ * Triggered when the user clicks "Payment Confirmed" in the Jules Rimet email.
+ *
+ * @param {object} supabase   - Supabase admin client
+ * @param {string} userEmail  - The user's email address
+ * @param {string} userName   - The user's display name
+ */
+async function sendJulesRimetPaymentDeclared(supabase, userEmail, userName) {
+  if (!isConfigured()) return;
+
+  try {
+    // Look up admin email from the DB
+    const { data: adminProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('is_admin', true)
+      .maybeSingle();
+
+    let adminEmail = null;
+    if (adminProfile) {
+      const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const adminUser = authData?.users?.find(u => u.id === adminProfile.id);
+      adminEmail = adminUser?.email;
+    }
+
+    if (!adminEmail) {
+      console.warn('[email] Jules Rimet payment declared: no admin email found — skipping');
+      return;
+    }
+
+    await resend.emails.send({
+      from:    FROM,
+      to:      adminEmail,
+      subject: `💰 Jules Rimet — payment declared by ${userName || userEmail}`,
+      html:    julesRimetAdminNotificationHtml({ userEmail, userName }),
+    });
+
+    console.log(`[email] Jules Rimet payment declared notification sent to admin for ${userEmail}`);
+  } catch (err) {
+    console.error('[email] sendJulesRimetPaymentDeclared error:', err.message);
+    throw err;
+  }
+}
+
+module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry, sendJulesRimetPaymentDeclared };
