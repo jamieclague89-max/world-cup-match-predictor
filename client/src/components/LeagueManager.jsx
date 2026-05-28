@@ -511,8 +511,8 @@ export default function LeagueManager({ user, predictions }) {
               {[
                 { icon: '💰', text: 'Pay a one-off entry fee to secure your place' },
                 { icon: '🔑', text: 'Receive a private invite code once payment is confirmed' },
-                { icon: '⚽', text: 'Predict every match — same scoring rules as the main app' },
-                { icon: '🏆', text: 'Highest points at full time wins the entire prize pool' },
+                { icon: '⚽', text: 'Predict every match to score points and climb the league table' },
+                { icon: '🏆', text: 'Highest points at the end of the tournament wins the entire prize pool' },
               ].map(({ icon, text }) => (
                 <div key={text} className="flex items-start gap-2.5">
                   <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
