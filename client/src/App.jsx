@@ -117,9 +117,10 @@ export default function App() {
   }
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const [session,    setSession]    = useState(undefined);
-  const [profile,    setProfile]    = useState(undefined);
-  const [recovering, setRecovering] = useState(false);
+  const [session,     setSession]     = useState(undefined);
+  const [profile,     setProfile]     = useState(undefined);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [recovering,  setRecovering]  = useState(false);
   const [predictions,  setPredictions]  = useState({});
   const [fixtureOdds,  setFixtureOdds]  = useState({});
   const [activeTab,   setActiveTab]   = useState('predictions');
@@ -162,10 +163,12 @@ export default function App() {
     if (!session) {
       setProfile(null);
       setPredictions({});
+      setDataLoading(false);
       return;
     }
 
     async function loadUserData() {
+      setDataLoading(true);
       // 1. Profile
       const { data: profileData } = await supabase
         .from('profiles')
@@ -252,6 +255,7 @@ export default function App() {
           // State is already initialised to DEFAULT_PREFS — nothing more to merge
         }
       }
+      setDataLoading(false);
     }
 
     loadUserData();
@@ -316,7 +320,7 @@ export default function App() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (session === undefined || (session && profile === undefined)) {
+  if (session === undefined || dataLoading || (session && profile === undefined)) {
     return <LoadingScreen />;
   }
 
