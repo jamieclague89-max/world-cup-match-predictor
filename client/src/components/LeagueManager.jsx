@@ -3,6 +3,144 @@ import toast from 'react-hot-toast';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import HeadToHead from './HeadToHead';
 
+// ── League share sheet ────────────────────────────────────────────────────────
+function ShareSheet({ code, leagueName }) {
+  const [copied, setCopied] = useState(false);
+
+  const appUrl  = typeof window !== 'undefined' ? window.location.origin : 'https://playworldcup26.com';
+  const message = `Join my World Cup 2026 Predictor league! ⚽🏆\n\nLeague: ${leagueName}\nCode: ${code}\n\nSign up & play free at ${appUrl}`;
+  const msgEnc  = encodeURIComponent(message);
+  const urlEnc  = encodeURIComponent(appUrl);
+
+  const platforms = [
+    {
+      label: 'WhatsApp',
+      bg:    'bg-[#25D366] hover:bg-[#20BD5A]',
+      icon:  (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white flex-shrink-0">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.535 5.856L.057 23.885a.5.5 0 0 0 .612.612l6.098-1.493A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.9 9.9 0 0 1-5.031-1.371l-.36-.214-3.733.914.944-3.641-.235-.374A9.862 9.862 0 0 1 2.1 12C2.1 6.532 6.532 2.1 12 2.1S21.9 6.532 21.9 12 17.468 21.9 12 21.9z"/>
+        </svg>
+      ),
+      href: `https://wa.me/?text=${msgEnc}`,
+    },
+    {
+      label: 'Email',
+      bg:    'bg-blue-600 hover:bg-blue-500',
+      icon:  (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white flex-shrink-0">
+          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
+        </svg>
+      ),
+      href: `mailto:?subject=${encodeURIComponent(`Join ${leagueName} — World Cup 2026 Predictor`)}&body=${msgEnc}`,
+    },
+    {
+      label: 'Telegram',
+      bg:    'bg-[#2AABEE] hover:bg-[#229ED9]',
+      icon:  (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white flex-shrink-0">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+      ),
+      href: `https://t.me/share/url?url=${urlEnc}&text=${encodeURIComponent(`Join my World Cup 2026 Predictor league!\n\nLeague: ${leagueName} · Code: ${code}`)}`,
+    },
+    {
+      label: 'X',
+      bg:    'bg-black hover:bg-neutral-800 border border-neutral-700',
+      icon:  (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white flex-shrink-0">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.631 5.903-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      ),
+      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join my World Cup 2026 Predictor league! ⚽🏆\nLeague: ${leagueName} · Code: ${code}\n${appUrl}`)}`,
+    },
+    {
+      label: 'SMS',
+      bg:    'bg-green-700 hover:bg-green-600',
+      icon:  (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white flex-shrink-0">
+          <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 11H7V9h2v2zm4 0h-2V9h2v2zm4 0h-2V9h2v2z"/>
+        </svg>
+      ),
+      href: `sms:?body=${msgEnc}`,
+    },
+  ];
+
+  function copyCode() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success('Code copied!');
+    });
+  }
+
+  async function nativeShare() {
+    try {
+      await navigator.share({
+        title: `Join ${leagueName} — World Cup 2026 Predictor`,
+        text:  message,
+        url:   appUrl,
+      });
+    } catch {
+      // dismissed or not supported — silent fail
+    }
+  }
+
+  const supportsNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+
+  return (
+    <div className="mt-4 space-y-3">
+      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Share with friends</p>
+
+      <div className="flex flex-wrap gap-2">
+        {/* Native share (mobile OS sheet) */}
+        {supportsNativeShare && (
+          <button
+            onClick={nativeShare}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg
+                       bg-gold-500 text-pitch-900 hover:bg-gold-400 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0">
+              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+            </svg>
+            Share
+          </button>
+        )}
+
+        {/* Platform-specific buttons */}
+        {platforms.map(({ label, bg, icon, href }) => (
+          <a
+            key={label}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors ${bg}`}
+          >
+            {icon}
+            <span>{label}</span>
+          </a>
+        ))}
+
+        {/* Copy code */}
+        <button
+          onClick={copyCode}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border
+            ${copied
+              ? 'bg-green-500/20 border-green-500/40 text-green-400'
+              : 'bg-pitch-700 border-pitch-600 text-slate-300 hover:bg-pitch-600'
+            }`}
+        >
+          {copied
+            ? <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+            : <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          }
+          {copied ? 'Copied!' : 'Copy code'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const API = '/api';
 
 async function apiFetch(path, options) {
@@ -93,7 +231,6 @@ export default function LeagueManager({ user, predictions }) {
   const [joinCode, setJoinCode] = useState('');
   const [standings, setStandings] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [opponent, setOpponent] = useState(null); // { name, userId }
 
   // ── Create league ───────────────────────────────────────────────────────────
@@ -152,14 +289,6 @@ export default function LeagueManager({ user, predictions }) {
     }
   }, [savedLeague]);
 
-  // ── Copy invite code ────────────────────────────────────────────────────────
-  function copyCode() {
-    navigator.clipboard.writeText(savedLeague.code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
   // ── Leave league ────────────────────────────────────────────────────────────
   function leaveLeague() {
     if (confirm('Leave this league? You can always rejoin with the code.')) {
@@ -189,20 +318,16 @@ export default function LeagueManager({ user, predictions }) {
             </button>
           </div>
 
-          {/* Invite code */}
-          <div className="mt-4 bg-pitch-900 rounded-lg p-4 border border-pitch-600">
-            <p className="text-slate-400 text-xs font-semibold mb-2">Invite friends with this code</p>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-3xl font-black text-gold-400 tracking-[0.2em]">
-                {savedLeague.code}
-              </span>
-              <button onClick={copyCode} className="btn-secondary text-xs py-1.5 px-3">
-                {copied ? '✓ Copied!' : 'Copy'}
-              </button>
-            </div>
+          {/* Invite code + share sheet */}
+          <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600">
+            <p className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wide">Invite code</p>
+            <span className="font-mono text-4xl font-black text-gold-400 tracking-[0.25em]">
+              {savedLeague.code}
+            </span>
             <p className="text-slate-500 text-xs mt-2">
-              Share this code with friends — they enter it under My League → Join League.
+              Friends enter this code under My League → Join League.
             </p>
+            <ShareSheet code={savedLeague.code} leagueName={savedLeague.name} />
           </div>
         </div>
 
@@ -268,6 +393,13 @@ export default function LeagueManager({ user, predictions }) {
           >
             {loading ? '…' : '↻ Refresh'}
           </button>
+        </div>
+
+        {/* Invite more friends from standings view */}
+        <div className="card mt-4">
+          <p className="text-xs text-slate-400 font-semibold mb-1">Invite more friends</p>
+          <p className="font-mono text-2xl font-black text-gold-400 tracking-[0.2em] mb-2">{savedLeague.code}</p>
+          <ShareSheet code={savedLeague.code} leagueName={savedLeague.name} />
         </div>
 
         <p className="text-slate-500 text-xs text-center mt-3">
