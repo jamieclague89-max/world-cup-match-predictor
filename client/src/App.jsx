@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -459,6 +460,7 @@ export default function App() {
           />
         )}
       </main>
+      <Analytics />
     </div>
   );
 }
