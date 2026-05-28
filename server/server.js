@@ -373,35 +373,51 @@ app.post('/api/leaderboard/results', async (req, res) => {
 app.post('/api/admin/email/reminder', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-  res.json({ message: 'Reminder emails queued' });
-  emailService.sendReminderEmails(supabase)
-    .catch(e => console.error('[email] Reminder error:', e.message));
+  try {
+    const result = await emailService.sendReminderEmails(supabase);
+    res.json({ message: 'Reminder emails sent', ...result });
+  } catch (e) {
+    console.error('[email] Reminder error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/email/digest — send weekly standings digest to all users
 app.post('/api/admin/email/digest', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-  res.json({ message: 'Digest emails queued' });
-  emailService.sendWeeklyDigest(supabase)
-    .catch(e => console.error('[email] Digest error:', e.message));
+  try {
+    const result = await emailService.sendWeeklyDigest(supabase);
+    res.json({ message: 'Digest emails sent', ...result });
+  } catch (e) {
+    console.error('[email] Digest error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/notifications/deadline — manually trigger deadline reminders
 app.post('/api/admin/notifications/deadline', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
-  res.json({ message: 'Deadline reminders triggered' });
-  deadlineReminder.checkDeadlines()
-    .catch(e => console.error('[deadlineReminder] Manual trigger error:', e.message));
+  try {
+    await deadlineReminder.checkDeadlines();
+    res.json({ message: 'Deadline reminders sent' });
+  } catch (e) {
+    console.error('[deadlineReminder] Manual trigger error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/notifications/daily-digest — manually trigger end-of-day digest
 app.post('/api/admin/notifications/daily-digest', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
   const dateStr = req.body.date || new Date().toISOString().slice(0, 10);
-  res.json({ message: `Daily digest triggered for ${dateStr}` });
-  sendDailyDigestNotifications(dateStr)
-    .catch(e => console.error('[notifications] Manual digest error:', e.message));
+  try {
+    await sendDailyDigestNotifications(dateStr);
+    res.json({ message: `Daily digest sent for ${dateStr}` });
+  } catch (e) {
+    console.error('[notifications] Manual digest error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/email/daily-results — manually trigger today's results digest
@@ -409,9 +425,13 @@ app.post('/api/admin/email/daily-results', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
   const { date } = req.body;
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-  res.json({ message: 'Daily results email queued' });
-  emailService.sendDailyResultsEmail(supabase, date || null)
-    .catch(e => console.error('[email] Daily results error:', e.message));
+  try {
+    const result = await emailService.sendDailyResultsEmail(supabase, date || null);
+    res.json({ message: 'Daily results email sent', ...result });
+  } catch (e) {
+    console.error('[email] Daily results error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Sync status (admin only) ─────────────────────────────────────────────────
