@@ -60,18 +60,6 @@ function cachePrefs(prefs) {
   } catch {}
 }
 
-// ── Screens shown while checking auth / loading data ─────────────────────────
-function LoadingScreen() {
-  return (
-    <div className="min-h-screen bg-pitch-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4 animate-pulse">🏆</div>
-        <p className="text-slate-500 text-sm">Loading…</p>
-      </div>
-    </div>
-  );
-}
-
 // ── Main app ──────────────────────────────────────────────────────────────────
 export default function App() {
   // ── User preferences (source of truth = Supabase, cached in localStorage) ──
@@ -117,10 +105,9 @@ export default function App() {
   }
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const [session,     setSession]     = useState(undefined);
-  const [profile,     setProfile]     = useState(undefined);
-  const [dataLoading, setDataLoading] = useState(false);
-  const [recovering,  setRecovering]  = useState(false);
+  const [session,    setSession]    = useState(undefined);
+  const [profile,    setProfile]    = useState(undefined);
+  const [recovering, setRecovering] = useState(false);
   const [predictions,  setPredictions]  = useState({});
   const [fixtureOdds,  setFixtureOdds]  = useState({});
   const [activeTab,   setActiveTab]   = useState('predictions');
@@ -130,7 +117,10 @@ export default function App() {
   const [unpredictedOnly, setUnpredictedOnly] = useState(false);
 
   const [overrides] = useLocalStorage('wc2026_fixture_overrides', {});
-  const syncTimer   = useRef(null);
+  const syncTimer        = useRef(null);
+  // Only true when the user deliberately clicks Sign Out.
+  // Prevents Supabase's tab-switch SIGNED_OUT events from wiping the UI.
+  const explicitSignOut  = useRef(false);
 
   const fixtures = useMemo(
     () => FIXTURES.map(f => ({ ...f, ...(overrides[f.id] || {}) })),
@@ -145,9 +135,12 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Reset profile to undefined on sign-in so the loading screen shows
-        // while the profile is fetched — prevents a flash of the ProfileSetup page
-        if (event === 'SIGNED_IN') setProfile(undefined);
+        if (event === 'SIGNED_OUT') {
+          // Supabase fires SIGNED_OUT on tab-switch token-refresh cycles.
+          // Only clear the UI when the user deliberately signed out.
+          if (!explicitSignOut.current) return;
+          explicitSignOut.current = false;
+        }
         setSession(session ?? null);
         if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       }
@@ -163,12 +156,10 @@ export default function App() {
     if (!session) {
       setProfile(null);
       setPredictions({});
-      setDataLoading(false);
       return;
     }
 
     async function loadUserData() {
-      setDataLoading(true);
       // 1. Profile
       const { data: profileData } = await supabase
         .from('profiles')
@@ -255,7 +246,6 @@ export default function App() {
           // State is already initialised to DEFAULT_PREFS — nothing more to merge
         }
       }
-      setDataLoading(false);
     }
 
     loadUserData();
@@ -312,6 +302,7 @@ export default function App() {
 
   async function handleLogout() {
     clearTimeout(syncTimer.current);
+    explicitSignOut.current = true; // allow the SIGNED_OUT event to clear the UI
     await supabase.auth.signOut();
     setProfile(null);
     setPredictions({});
@@ -319,10 +310,6 @@ export default function App() {
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
-
-  if (session === undefined || dataLoading || (session && profile === undefined)) {
-    return <LoadingScreen />;
-  }
 
   // Password recovery — show reset form after user clicks the email link
   if (recovering) {

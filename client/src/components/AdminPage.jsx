@@ -211,8 +211,8 @@ function SyncStatus() {
           </p>
           <p className="text-slate-500 text-xs mt-0.5">
             {syncData.enabled
-              ? 'Polling football-data.org every 5 minutes for finished matches'
-              : 'Set FOOTBALL_DATA_API_KEY in server/.env to enable automatic results'}
+              ? 'Syncing football-data.org via cron every 5 minutes'
+              : 'Add FOOTBALL_DATA_API_KEY to Vercel environment variables to enable'}
           </p>
         </div>
         <button onClick={fetchStatus} disabled={loading} className="btn-secondary text-xs py-1 px-3 flex-shrink-0">
@@ -247,8 +247,8 @@ function SyncStatus() {
           <ol className="text-amber-400/80 space-y-0.5 list-decimal list-inside">
             <li>Sign up free at <span className="text-amber-300 font-mono">football-data.org</span></li>
             <li>Copy your API token from your account dashboard</li>
-            <li>Create <span className="font-mono">server/.env</span> and add: <span className="font-mono">FOOTBALL_DATA_API_KEY=your_token_here</span></li>
-            <li>Restart the server — results will sync automatically every 5 minutes</li>
+            <li>Add <span className="font-mono">FOOTBALL_DATA_API_KEY</span> to your Vercel project environment variables</li>
+            <li>Redeploy — results will sync automatically via the cron job every 5 minutes</li>
           </ol>
         </div>
       )}

@@ -415,9 +415,19 @@ app.post('/api/admin/email/daily-results', async (req, res) => {
 });
 
 // ── Sync status (admin only) ─────────────────────────────────────────────────
+// In Vercel's serverless environment each invocation is stateless, so the
+// in-memory `status.enabled` flag is always false even when the API key is set.
+// We override `enabled` and `apiKey` here using the actual env var so the admin
+// panel shows the correct configuration state.
 app.get('/api/sync-status', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
-  res.json(resultsSync.getStatus());
+  const hasKey = !!process.env.FOOTBALL_DATA_API_KEY;
+  const base   = resultsSync.getStatus();
+  res.json({
+    ...base,
+    enabled: hasKey,
+    apiKey:  hasKey ? '***configured***' : null,
+  });
 });
 
 // ── Delete own account ───────────────────────────────────────────────────────
