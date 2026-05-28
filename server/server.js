@@ -111,6 +111,57 @@ app.post('/api/leagues/:code/join', async (req, res) => {
   res.json({ message: 'Joined successfully', league });
 });
 
+// ── Delete a league (creator only) ───────────────────────────────────────────
+app.delete('/api/leagues/:code', async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+  const code   = req.params.code.toUpperCase();
+  const userId = req.body?.userId;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+
+  const { data: league } = await supabase
+    .from('leagues').select('created_by').eq('code', code).maybeSingle();
+
+  if (!league) return res.status(404).json({ error: 'League not found' });
+  if (league.created_by !== userId) return res.status(403).json({ error: 'Only the league creator can delete it' });
+
+  // Remove all members first (FK), then the league itself
+  await supabase.from('league_members').delete().eq('league_code', code);
+  await supabase.from('leagues').delete().eq('code', code);
+
+  res.json({ message: 'League deleted' });
+});
+
+// ── Remove a member from a league ────────────────────────────────────────────
+// Allowed for: the league creator (kicking someone), or the member themselves (leaving)
+app.delete('/api/leagues/:code/members/:memberId', async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+  const code     = req.params.code.toUpperCase();
+  const memberId = req.params.memberId;
+  const userId   = req.body?.userId; // the person making the request
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+
+  const { data: league } = await supabase
+    .from('leagues').select('created_by').eq('code', code).maybeSingle();
+
+  if (!league) return res.status(404).json({ error: 'League not found' });
+
+  const isCreator  = league.created_by === userId;
+  const isSelfLeave = memberId === userId;
+
+  if (!isCreator && !isSelfLeave) {
+    return res.status(403).json({ error: 'Only the league creator can remove other members' });
+  }
+  if (isCreator && memberId === userId) {
+    return res.status(400).json({ error: 'Delete the league instead of removing yourself' });
+  }
+
+  await supabase.from('league_members').delete().eq('league_code', code).eq('user_id', memberId);
+
+  res.json({ message: 'Member removed' });
+});
+
 // ── League standings ──────────────────────────────────────────────────────────
 app.get('/api/leagues/:code/standings', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
@@ -120,7 +171,7 @@ app.get('/api/leagues/:code/standings', async (req, res) => {
   // Verify league exists
   const { data: league, error: leagueErr } = await supabase
     .from('leagues')
-    .select('code, name')
+    .select('code, name, created_by')
     .eq('code', code)
     .maybeSingle();
 

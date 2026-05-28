@@ -3,6 +3,20 @@ import toast from 'react-hot-toast';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import HeadToHead from './HeadToHead';
 
+const API = '/api';
+
+async function apiFetch(path, options) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
 // ── League share sheet ────────────────────────────────────────────────────────
 function ShareSheet({ code, leagueName }) {
   const [copied, setCopied] = useState(false);
@@ -76,14 +90,8 @@ function ShareSheet({ code, leagueName }) {
 
   async function nativeShare() {
     try {
-      await navigator.share({
-        title: `Join ${leagueName} — World Cup 2026 Predictor`,
-        text:  message,
-        url:   appUrl,
-      });
-    } catch {
-      // dismissed or not supported — silent fail
-    }
+      await navigator.share({ title: `Join ${leagueName} — World Cup 2026 Predictor`, text: message, url: appUrl });
+    } catch { /* dismissed or unsupported */ }
   }
 
   const supportsNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
@@ -91,9 +99,7 @@ function ShareSheet({ code, leagueName }) {
   return (
     <div className="mt-4 space-y-3">
       <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Share with friends</p>
-
       <div className="flex flex-wrap gap-2">
-        {/* Native share (mobile OS sheet) */}
         {supportsNativeShare && (
           <button
             onClick={nativeShare}
@@ -106,22 +112,13 @@ function ShareSheet({ code, leagueName }) {
             Share
           </button>
         )}
-
-        {/* Platform-specific buttons */}
         {platforms.map(({ label, bg, icon, href }) => (
-          <a
-            key={label}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
+          <a key={label} href={href} target="_blank" rel="noopener noreferrer"
             className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors ${bg}`}
           >
-            {icon}
-            <span>{label}</span>
+            {icon} <span>{label}</span>
           </a>
         ))}
-
-        {/* Copy code */}
         <button
           onClick={copyCode}
           className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border
@@ -141,21 +138,8 @@ function ShareSheet({ code, leagueName }) {
   );
 }
 
-const API = '/api';
-
-async function apiFetch(path, options) {
-  const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
-  return data;
-}
-
-const MEDALS = ['🥇', '🥈', '🥉'];
-
-function StandingsTable({ standings, currentUser, onSelectOpponent }) {
+// ── Standings table ───────────────────────────────────────────────────────────
+function StandingsTable({ standings, currentUser, isOwner, onSelectOpponent, onRemoveMember }) {
   if (standings.length === 0) {
     return (
       <p className="text-slate-400 text-center py-8 text-sm">
@@ -176,6 +160,7 @@ function StandingsTable({ standings, currentUser, onSelectOpponent }) {
             </th>
             <th className="text-right py-2 pr-3 hidden sm:table-cell">Result</th>
             <th className="text-right py-2 font-bold text-gold-400">Pts</th>
+            {isOwner && <th className="w-8" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-pitch-700/50">
@@ -203,14 +188,25 @@ function StandingsTable({ standings, currentUser, onSelectOpponent }) {
                     {isMe && <span className="text-xs text-gold-600 ml-1.5">(you)</span>}
                   </span>
                   {!isMe && (
-                    <span className="text-slate-600 text-xs ml-2 hidden sm:inline">
-                      vs you →
-                    </span>
+                    <span className="text-slate-600 text-xs ml-2 hidden sm:inline">vs you →</span>
                   )}
                 </td>
                 <td className="py-3 pr-3 text-right text-gold-400 font-bold hidden sm:table-cell">{s.exact}</td>
                 <td className="py-3 pr-3 text-right text-slate-300 hidden sm:table-cell">{s.correct}</td>
                 <td className="py-3 text-right font-black text-gold-400 text-base">{s.points}</td>
+                {isOwner && (
+                  <td className="py-3 pl-2 text-right" onClick={e => e.stopPropagation()}>
+                    {!isMe && (
+                      <button
+                        onClick={() => onRemoveMember(s.userId, s.name)}
+                        className="text-slate-600 hover:text-red-400 transition-colors text-xs px-1.5 py-1 rounded"
+                        title={`Remove ${s.name}`}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -218,22 +214,79 @@ function StandingsTable({ standings, currentUser, onSelectOpponent }) {
       </table>
       <p className="text-slate-600 text-xs text-center mt-3 pb-1">
         Tap any player to see a head-to-head comparison
+        {isOwner && <span className="ml-1">· ✕ to remove a member</span>}
       </p>
     </div>
   );
 }
 
+// ── Main component ────────────────────────────────────────────────────────────
 export default function LeagueManager({ user, predictions }) {
-  // Persist which league the user has joined across sessions
-  const [savedLeague, setSavedLeague] = useLocalStorage('wc2026_league', null);
-  const [view, setView] = useState('home'); // 'home' | 'create' | 'join' | 'standings' | 'h2h'
-  const [leagueName, setLeagueName] = useState('');
-  const [joinCode, setJoinCode] = useState('');
-  const [standings, setStandings] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [opponent, setOpponent] = useState(null); // { name, userId }
+  // Array of leagues the user belongs to: [{ code, name, createdBy? }]
+  const [savedLeagues, setSavedLeagues] = useLocalStorage('wc2026_leagues', []);
 
-  // ── Create league ───────────────────────────────────────────────────────────
+  // Migrate old single-league format (wc2026_league → wc2026_leagues)
+  useEffect(() => {
+    const old = localStorage.getItem('wc2026_league');
+    if (!old) return;
+    try {
+      const parsed = JSON.parse(old);
+      if (parsed?.code) {
+        setSavedLeagues(prev =>
+          prev.some(l => l.code === parsed.code)
+            ? prev
+            : [...prev, { code: parsed.code, name: parsed.name }]
+        );
+      }
+    } catch {}
+    localStorage.removeItem('wc2026_league');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [activeCode, setActiveCode] = useState(null);
+  const [view, setView]             = useState('list'); // 'list'|'home'|'create'|'join'|'standings'|'h2h'
+  const [leagueName, setLeagueName] = useState('');
+  const [joinCode, setJoinCode]     = useState('');
+  const [standings, setStandings]   = useState(null);
+  const [leagueInfo, setLeagueInfo] = useState(null); // server-side league metadata (includes created_by)
+  const [loading, setLoading]       = useState(false);
+  const [opponent, setOpponent]     = useState(null);
+
+  const activeLeague = savedLeagues.find(l => l.code === activeCode) || null;
+
+  // Is the current user the creator of the active league?
+  const isOwner = !!(
+    leagueInfo?.created_by === user.id ||
+    activeLeague?.createdBy === user.id
+  );
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function addLeague({ code, name, createdBy }) {
+    setSavedLeagues(prev =>
+      prev.some(l => l.code === code)
+        ? prev.map(l => l.code === code ? { ...l, name, createdBy } : l)
+        : [...prev, { code, name, createdBy }]
+    );
+  }
+
+  function purgeLeague(code) {
+    setSavedLeagues(prev => prev.filter(l => l.code !== code));
+    if (activeCode === code) {
+      setActiveCode(null);
+      setStandings(null);
+      setLeagueInfo(null);
+      setView('list');
+    }
+  }
+
+  function openLeague(code) {
+    setActiveCode(code);
+    setStandings(null);
+    setLeagueInfo(null);
+    setView('home');
+  }
+
+  // ── Create league ────────────────────────────────────────────────────────────
   async function createLeague() {
     if (!leagueName.trim()) { toast.error('Enter a league name'); return; }
     setLoading(true);
@@ -242,10 +295,10 @@ export default function LeagueManager({ user, predictions }) {
         method: 'POST',
         body: JSON.stringify({ name: leagueName.trim(), userId: user.id }),
       });
-      setSavedLeague({ code: data.code, name: data.league.name });
+      addLeague({ code: data.code, name: data.league.name, createdBy: user.id });
       toast.success(`League "${data.league.name}" created!`);
       setLeagueName('');
-      setView('home');
+      openLeague(data.code);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -253,20 +306,25 @@ export default function LeagueManager({ user, predictions }) {
     }
   }
 
-  // ── Join league ─────────────────────────────────────────────────────────────
+  // ── Join league ──────────────────────────────────────────────────────────────
   async function joinLeague() {
     const code = joinCode.trim().toUpperCase();
     if (code.length !== 6) { toast.error('Enter a valid 6-character code'); return; }
+    if (savedLeagues.some(l => l.code === code)) {
+      toast.error('You\'re already in that league');
+      setJoinCode('');
+      return;
+    }
     setLoading(true);
     try {
       const data = await apiFetch(`/leagues/${code}/join`, {
         method: 'POST',
         body: JSON.stringify({ userId: user.id }),
       });
-      setSavedLeague({ code, name: data.league.name });
+      addLeague({ code, name: data.league.name });
       toast.success(`Joined "${data.league.name}"!`);
       setJoinCode('');
-      setView('home');
+      openLeague(code);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -274,84 +332,76 @@ export default function LeagueManager({ user, predictions }) {
     }
   }
 
-  // ── Load standings ──────────────────────────────────────────────────────────
+  // ── Load standings ───────────────────────────────────────────────────────────
   const loadStandings = useCallback(async () => {
-    if (!savedLeague) return;
+    if (!activeCode) return;
     setLoading(true);
     try {
-      const data = await apiFetch(`/leagues/${savedLeague.code}/standings`);
+      const data = await apiFetch(`/leagues/${activeCode}/standings`);
       setStandings(data.standings);
+      setLeagueInfo(data.league); // includes created_by
       setView('standings');
     } catch (e) {
       toast.error(e.message);
     } finally {
       setLoading(false);
     }
-  }, [savedLeague]);
+  }, [activeCode]);
 
-  // ── Leave league ────────────────────────────────────────────────────────────
-  function leaveLeague() {
-    if (confirm('Leave this league? You can always rejoin with the code.')) {
-      setSavedLeague(null);
-      setStandings(null);
-      setView('home');
+  // ── Leave league (self-remove) ───────────────────────────────────────────────
+  async function leaveLeague() {
+    if (!confirm('Leave this league? You can rejoin with the invite code.')) return;
+    try {
+      await apiFetch(`/leagues/${activeCode}/members/${user.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ userId: user.id }),
+      });
+    } catch { /* fail silently — remove locally regardless */ }
+    purgeLeague(activeCode);
+    toast.success('Left league');
+  }
+
+  // ── Delete league (creator only) ─────────────────────────────────────────────
+  async function deleteLeague() {
+    const name = activeLeague?.name || 'this league';
+    if (!confirm(`Delete "${name}"? This permanently removes the league and all members. This cannot be undone.`)) return;
+    setLoading(true);
+    try {
+      await apiFetch(`/leagues/${activeCode}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ userId: user.id }),
+      });
+      purgeLeague(activeCode);
+      toast.success('League deleted');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
     }
   }
 
-  // ── Views ───────────────────────────────────────────────────────────────────
-
-  // Already in a league — home
-  if (savedLeague && view === 'home') {
-    return (
-      <div className="animate-fade-in mt-6 space-y-4">
-        <div className="card">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Your League</p>
-              <h2 className="text-2xl font-black text-white">{savedLeague.name}</h2>
-            </div>
-            <button
-              onClick={leaveLeague}
-              className="text-xs text-slate-500 hover:text-red-400 transition-colors mt-1"
-            >
-              Leave
-            </button>
-          </div>
-
-          {/* Invite code + share sheet */}
-          <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600">
-            <p className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wide">Invite code</p>
-            <span className="font-mono text-4xl font-black text-gold-400 tracking-[0.25em]">
-              {savedLeague.code}
-            </span>
-            <p className="text-slate-500 text-xs mt-2">
-              Friends enter this code under My League → Join League.
-            </p>
-            <ShareSheet code={savedLeague.code} leagueName={savedLeague.name} />
-          </div>
-        </div>
-
-        <button
-          onClick={loadStandings}
-          disabled={loading}
-          className="btn-primary w-full py-3 text-sm font-bold disabled:opacity-50"
-        >
-          {loading ? 'Loading…' : '🏆 View League Standings'}
-        </button>
-
-        <p className="text-slate-600 text-xs text-center">
-          Your predictions update automatically — no manual sync needed.
-          Standings update as official results come in.
-        </p>
-      </div>
-    );
+  // ── Remove member (creator only) ─────────────────────────────────────────────
+  async function removeMember(memberId, memberName) {
+    if (!confirm(`Remove ${memberName} from the league?`)) return;
+    try {
+      await apiFetch(`/leagues/${activeCode}/members/${memberId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ userId: user.id }),
+      });
+      setStandings(prev => prev.filter(s => s.userId !== memberId));
+      toast.success(`${memberName} removed`);
+    } catch (e) {
+      toast.error(e.message);
+    }
   }
 
-  // Head-to-head view
-  if (view === 'h2h' && opponent && savedLeague) {
+  // ── Views ────────────────────────────────────────────────────────────────────
+
+  // H2H view
+  if (view === 'h2h' && opponent && activeCode) {
     return (
       <HeadToHead
-        leagueCode={savedLeague.code}
+        leagueCode={activeCode}
         opponent={opponent}
         myPredictions={predictions ?? {}}
         myName={user.name}
@@ -365,41 +415,38 @@ export default function LeagueManager({ user, predictions }) {
     return (
       <div className="animate-fade-in mt-6">
         <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => setView('home')}
-            className="text-slate-400 hover:text-white text-sm transition-colors"
-          >
+          <button onClick={() => setView('home')} className="text-slate-400 hover:text-white text-sm transition-colors">
             ← Back
           </button>
-          <h2 className="text-white font-black text-xl">{savedLeague.name}</h2>
+          <h2 className="text-white font-black text-xl">{activeLeague?.name}</h2>
+          {isOwner && (
+            <span className="text-xs bg-gold-500/20 text-gold-400 border border-gold-500/30 rounded-full px-2 py-0.5 font-semibold">
+              Owner
+            </span>
+          )}
         </div>
 
         <div className="card">
           <StandingsTable
             standings={standings}
             currentUser={user}
-            onSelectOpponent={s => {
-              setOpponent({ name: s.name, userId: s.userId });
-              setView('h2h');
-            }}
+            isOwner={isOwner}
+            onSelectOpponent={s => { setOpponent({ name: s.name, userId: s.userId }); setView('h2h'); }}
+            onRemoveMember={removeMember}
           />
         </div>
 
         <div className="flex gap-3 mt-3">
-          <button
-            onClick={loadStandings}
-            disabled={loading}
-            className="btn-secondary flex-1 py-2 text-sm"
-          >
+          <button onClick={loadStandings} disabled={loading} className="btn-secondary flex-1 py-2 text-sm">
             {loading ? '…' : '↻ Refresh'}
           </button>
         </div>
 
-        {/* Invite more friends from standings view */}
+        {/* Invite more friends */}
         <div className="card mt-4">
           <p className="text-xs text-slate-400 font-semibold mb-1">Invite more friends</p>
-          <p className="font-mono text-2xl font-black text-gold-400 tracking-[0.2em] mb-2">{savedLeague.code}</p>
-          <ShareSheet code={savedLeague.code} leagueName={savedLeague.name} />
+          <p className="font-mono text-2xl font-black text-gold-400 tracking-[0.2em] mb-2">{activeCode}</p>
+          <ShareSheet code={activeCode} leagueName={activeLeague?.name || ''} />
         </div>
 
         <p className="text-slate-500 text-xs text-center mt-3">
@@ -409,47 +456,68 @@ export default function LeagueManager({ user, predictions }) {
     );
   }
 
-  // No league — home
-  if (!savedLeague && view === 'home') {
+  // League home view (single league selected)
+  if (view === 'home' && activeLeague) {
     return (
-      <div className="animate-fade-in mt-6 max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🏅</div>
-          <h2 className="text-2xl font-black text-white">Mini League</h2>
-          <p className="text-slate-400 text-sm mt-2">
-            Create a private league and challenge your friends to beat your predictions
-          </p>
+      <div className="animate-fade-in mt-6 space-y-4">
+        {/* Back to list */}
+        <button onClick={() => { setActiveCode(null); setView('list'); }}
+          className="text-slate-400 hover:text-white text-sm transition-colors"
+        >
+          ← My Leagues
+        </button>
+
+        <div className="card">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">
+                {isOwner ? 'Your League' : 'Joined League'}
+              </p>
+              <h2 className="text-2xl font-black text-white">{activeLeague.name}</h2>
+            </div>
+            {/* Owner: delete. Member: leave. */}
+            {isOwner ? (
+              <button
+                onClick={deleteLeague}
+                disabled={loading}
+                className="text-xs text-red-500 hover:text-red-400 transition-colors mt-1 disabled:opacity-50 border border-red-500/30 hover:border-red-400/50 rounded-lg px-2.5 py-1.5 font-semibold"
+              >
+                🗑 Delete League
+              </button>
+            ) : (
+              <button
+                onClick={leaveLeague}
+                className="text-xs text-slate-500 hover:text-red-400 transition-colors mt-1"
+              >
+                Leave
+              </button>
+            )}
+          </div>
+
+          {/* Invite code + share */}
+          <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600">
+            <p className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wide">Invite code</p>
+            <span className="font-mono text-4xl font-black text-gold-400 tracking-[0.25em]">
+              {activeLeague.code}
+            </span>
+            <p className="text-slate-500 text-xs mt-2">
+              Friends enter this code under My League → Join League.
+            </p>
+            <ShareSheet code={activeLeague.code} leagueName={activeLeague.name} />
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <button
-            onClick={() => setView('create')}
-            className="card hover:border-gold-500/50 hover:bg-pitch-700/50 transition-all cursor-pointer text-center py-6"
-          >
-            <div className="text-3xl mb-2">➕</div>
-            <p className="text-white font-bold">Create League</p>
-            <p className="text-slate-400 text-xs mt-1">Start a new private league</p>
-          </button>
+        <button
+          onClick={loadStandings}
+          disabled={loading}
+          className="btn-primary w-full py-3 text-sm font-bold disabled:opacity-50"
+        >
+          {loading ? 'Loading…' : '🏆 View League Standings'}
+        </button>
 
-          <button
-            onClick={() => setView('join')}
-            className="card hover:border-gold-500/50 hover:bg-pitch-700/50 transition-all cursor-pointer text-center py-6"
-          >
-            <div className="text-3xl mb-2">🔗</div>
-            <p className="text-white font-bold">Join League</p>
-            <p className="text-slate-400 text-xs mt-1">Enter an invite code</p>
-          </button>
-        </div>
-
-        <div className="card border-pitch-600/50">
-          <h3 className="text-sm font-bold text-slate-300 mb-3">How it works</h3>
-          <ul className="text-slate-400 text-xs space-y-2">
-            <li>🎯 <strong className="text-slate-300">Exact scoreline</strong> — 5 pts</li>
-            <li>✅ <strong className="text-slate-300">Correct result</strong> — 3 pts</li>
-            <li>⚽ <strong className="text-slate-300">First goalscorer</strong> — 3 pts bonus</li>
-            <li>📏 <strong className="text-slate-300">Correct score, wrong winner</strong> — 1 pt</li>
-          </ul>
-        </div>
+        <p className="text-slate-600 text-xs text-center">
+          Standings update as official results come in — no manual sync needed.
+        </p>
       </div>
     );
   }
@@ -458,10 +526,7 @@ export default function LeagueManager({ user, predictions }) {
   if (view === 'create') {
     return (
       <div className="animate-fade-in mt-6 max-w-md mx-auto">
-        <button
-          onClick={() => setView('home')}
-          className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors"
-        >
+        <button onClick={() => setView('list')} className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors">
           ← Back
         </button>
         <div className="card">
@@ -486,11 +551,7 @@ export default function LeagueManager({ user, predictions }) {
                            placeholder-slate-500 focus:border-gold-400 focus:outline-none transition-colors"
               />
             </div>
-            <button
-              onClick={createLeague}
-              disabled={loading}
-              className="btn-primary w-full py-3 font-bold disabled:opacity-50"
-            >
+            <button onClick={createLeague} disabled={loading} className="btn-primary w-full py-3 font-bold disabled:opacity-50">
               {loading ? 'Creating…' : 'Create League →'}
             </button>
           </div>
@@ -503,10 +564,7 @@ export default function LeagueManager({ user, predictions }) {
   if (view === 'join') {
     return (
       <div className="animate-fade-in mt-6 max-w-md mx-auto">
-        <button
-          onClick={() => setView('home')}
-          className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors"
-        >
+        <button onClick={() => setView('list')} className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors">
           ← Back
         </button>
         <div className="card">
@@ -532,11 +590,7 @@ export default function LeagueManager({ user, predictions }) {
                 maxLength={6}
               />
             </div>
-            <button
-              onClick={joinLeague}
-              disabled={loading}
-              className="btn-primary w-full py-3 font-bold disabled:opacity-50"
-            >
+            <button onClick={joinLeague} disabled={loading} className="btn-primary w-full py-3 font-bold disabled:opacity-50">
               {loading ? 'Joining…' : 'Join League →'}
             </button>
           </div>
@@ -545,5 +599,105 @@ export default function LeagueManager({ user, predictions }) {
     );
   }
 
-  return null;
+  // League list view (default — shown whether user has leagues or not)
+  return (
+    <div className="animate-fade-in mt-6 max-w-md mx-auto">
+
+      {savedLeagues.length === 0 ? (
+        /* ── Empty state ── */
+        <>
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-3">🏅</div>
+            <h2 className="text-2xl font-black text-white">Mini League</h2>
+            <p className="text-slate-400 text-sm mt-2">
+              Create a private league and challenge your friends to beat your predictions
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <button
+              onClick={() => setView('create')}
+              className="card hover:border-gold-500/50 hover:bg-pitch-700/50 transition-all cursor-pointer text-center py-6"
+            >
+              <div className="text-3xl mb-2">➕</div>
+              <p className="text-white font-bold">Create League</p>
+              <p className="text-slate-400 text-xs mt-1">Start a new private league</p>
+            </button>
+
+            <button
+              onClick={() => setView('join')}
+              className="card hover:border-gold-500/50 hover:bg-pitch-700/50 transition-all cursor-pointer text-center py-6"
+            >
+              <div className="text-3xl mb-2">🔗</div>
+              <p className="text-white font-bold">Join League</p>
+              <p className="text-slate-400 text-xs mt-1">Enter an invite code</p>
+            </button>
+          </div>
+
+          <div className="card border-pitch-600/50">
+            <h3 className="text-sm font-bold text-slate-300 mb-3">How it works</h3>
+            <ul className="text-slate-400 text-xs space-y-2">
+              <li>🎯 <strong className="text-slate-300">Exact scoreline</strong> — 5 pts</li>
+              <li>✅ <strong className="text-slate-300">Correct result</strong> — 3 pts</li>
+              <li>⚽ <strong className="text-slate-300">First goalscorer</strong> — 3 pts bonus</li>
+              <li>📏 <strong className="text-slate-300">Correct score, wrong winner</strong> — 1 pt</li>
+            </ul>
+          </div>
+        </>
+      ) : (
+        /* ── Leagues list ── */
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-black text-white">My Leagues</h2>
+            <span className="text-xs text-slate-500">{savedLeagues.length} league{savedLeagues.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          <div className="space-y-3 mb-5">
+            {savedLeagues.map(league => (
+              <button
+                key={league.code}
+                onClick={() => openLeague(league.code)}
+                className="card w-full text-left hover:border-gold-500/40 hover:bg-pitch-700/40 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-bold group-hover:text-gold-400 transition-colors">
+                      {league.name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-xs text-slate-500 tracking-widest">{league.code}</span>
+                      {league.createdBy === user.id && (
+                        <span className="text-xs bg-gold-500/15 text-gold-500 border border-gold-500/25 rounded-full px-1.5 py-0 font-semibold">
+                          Owner
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-slate-500 group-hover:text-gold-400 transition-colors text-lg">›</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Always-visible create + join buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setView('create')}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-pitch-600
+                         text-slate-300 hover:border-gold-500/50 hover:text-gold-400 transition-all text-sm font-semibold"
+            >
+              ➕ Create new
+            </button>
+            <button
+              onClick={() => setView('join')}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-pitch-600
+                         text-slate-300 hover:border-gold-500/50 hover:text-gold-400 transition-all text-sm font-semibold"
+            >
+              🔗 Join another
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
