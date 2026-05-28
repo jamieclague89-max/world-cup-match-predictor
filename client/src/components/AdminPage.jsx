@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { FIXTURES, TEAMS } from '../data/wc2026';
 import { SQUADS } from '../data/squads';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -727,13 +727,43 @@ function EmailPanel() {
   const [results, setResults]         = useState({});
   const [reminderDate, setReminderDate] = useState('2026-06-11'); // first match day as default test date
 
-  // Jules Rimet invite state — code is remembered in localStorage once set
-  const [jrEmails,     setJrEmails]     = useState('');
-  const [jrLeagueCode, setJrLeagueCode] = useState(
-    () => localStorage.getItem('wc2026_jr_league_code') || ''
-  );
-  const [jrSending,    setJrSending]    = useState(false);
-  const [jrResult,     setJrResult]     = useState('');
+  // Jules Rimet invite state — code is stored in the database
+  const [jrEmails,       setJrEmails]       = useState('');
+  const [jrLeagueCode,   setJrLeagueCode]   = useState('');
+  const [jrCodeLoading,  setJrCodeLoading]  = useState(true);
+  const [jrCodeSaving,   setJrCodeSaving]   = useState(false);
+  const [jrSending,      setJrSending]      = useState(false);
+  const [jrResult,       setJrResult]       = useState('');
+
+  // Load saved JR league code from the database on mount
+  useEffect(() => {
+    getAuthHeaders().then(headers =>
+      fetch('/api/admin/settings/jr_league_code', { headers })
+        .then(r => r.json())
+        .then(d => { if (d.value) setJrLeagueCode(d.value); })
+        .catch(() => {})
+        .finally(() => setJrCodeLoading(false))
+    );
+  }, []);
+
+  // Debounced save of the league code to the database
+  const jrSaveTimer = useRef(null);
+  function handleJrCodeChange(val) {
+    setJrLeagueCode(val);
+    clearTimeout(jrSaveTimer.current);
+    if (!val.trim()) return;
+    setJrCodeSaving(true);
+    jrSaveTimer.current = setTimeout(async () => {
+      try {
+        await fetch('/api/admin/settings/jr_league_code', {
+          method: 'POST',
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({ value: val }),
+        });
+      } catch {}
+      setJrCodeSaving(false);
+    }, 800);
+  }
 
   async function sendJulesRimetInvite() {
     setJrSending(true);
@@ -886,23 +916,26 @@ function EmailPanel() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs text-slate-400 font-semibold">League Code</label>
-                {jrLeagueCode && (
-                  <span className="text-xs text-green-500">✓ remembered</span>
-                )}
+                <span className="text-xs">
+                  {jrCodeLoading ? (
+                    <span className="text-slate-600">Loading…</span>
+                  ) : jrCodeSaving ? (
+                    <span className="text-slate-500">Saving…</span>
+                  ) : jrLeagueCode ? (
+                    <span className="text-green-500">✓ Saved to database</span>
+                  ) : null}
+                </span>
               </div>
               <input
                 type="text"
                 value={jrLeagueCode}
-                onChange={e => {
-                  const val = e.target.value.toUpperCase();
-                  setJrLeagueCode(val);
-                  localStorage.setItem('wc2026_jr_league_code', val);
-                }}
-                placeholder="e.g. XKQT7F — saved automatically once entered"
+                onChange={e => handleJrCodeChange(e.target.value.toUpperCase())}
+                placeholder={jrCodeLoading ? 'Loading…' : 'e.g. XKQT7F — saved automatically'}
+                disabled={jrCodeLoading}
                 maxLength={8}
                 className="w-full bg-pitch-900 border border-pitch-600 rounded px-3 py-2 text-white text-sm
                            font-mono tracking-widest placeholder-slate-600
-                           focus:border-gold-400 focus:outline-none"
+                           focus:border-gold-400 focus:outline-none disabled:opacity-50"
               />
             </div>
 
