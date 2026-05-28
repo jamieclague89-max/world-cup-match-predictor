@@ -379,9 +379,9 @@ function julesRimetPaymentHtml({ email }) {
       <tr>
         <td style="padding:16px 20px;">
           <p style="margin:0 0 4px;font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Payment reference</p>
-          <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#c9a227;font-family:monospace;">[Your Name] WC26</p>
+          <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#c9a227;font-family:monospace;">${email}</p>
           <p style="margin:0;font-size:12px;color:#8899aa;">
-            e.g. <span style="color:#ffffff;font-weight:600;">Jamie WC26</span> — use your own name so we can match your payment.
+            Use your email address as the reference so we can match your payment.
           </p>
         </td>
       </tr>
