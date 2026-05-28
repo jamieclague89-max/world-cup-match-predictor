@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
@@ -110,7 +111,15 @@ export default function App() {
   const [recovering, setRecovering] = useState(false);
   const [predictions,  setPredictions]  = useState({});
   const [fixtureOdds,  setFixtureOdds]  = useState({});
-  const [activeTab,   setActiveTab]   = useState('predictions');
+  const navigate_    = useNavigate();
+  const location     = useLocation();
+
+  // Derive the active tab from the URL path segment
+  const VALID_TABS = ['predictions', 'results', 'leaderboard', 'league', 'rules', 'admin', 'preferences', 'settings'];
+  const pathSeg    = location.pathname.split('/')[1] || '';
+  const activeTab  = VALID_TABS.includes(pathSeg) ? pathSeg : 'predictions';
+  function setActiveTab(tab) { navigate_('/' + tab); }
+
   const [authView, setAuthView] = useState('landing');
   const [authMode, setAuthMode] = useState('signin');
   const [predView, setPredView]             = useState('group');
@@ -168,7 +177,7 @@ export default function App() {
         .maybeSingle();
 
       setProfile(profileData ?? null);
-      if (profileData?.is_admin) setActiveTab('admin');
+      if (profileData?.is_admin) navigate_('/admin', { replace: true });
 
       if (profileData) {
         // 2. Predictions

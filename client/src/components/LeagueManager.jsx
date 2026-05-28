@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import HeadToHead from './HeadToHead';
@@ -274,14 +275,42 @@ export default function LeagueManager({ user, predictions }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [activeCode, setActiveCode] = useState(null);
-  const [view, setView]             = useState('list'); // 'list'|'home'|'create'|'join'|'standings'|'h2h'|'jules-rimet'
+  const navigate    = useNavigate();
+  const location    = useLocation();
+
+  // Derive view and activeCode from URL path
+  // /league → list
+  // /league/create → create
+  // /league/join → join
+  // /league/jules-rimet → jules-rimet
+  // /league/:code → home
+  // /league/:code/standings → standings
+  // /league/:code/h2h → h2h
+  const SPECIAL_SEGS = ['create', 'join', 'jules-rimet'];
+  const subParts = location.pathname.replace(/^\/league\/?/, '').split('/').filter(Boolean);
+  const activeCode = subParts[0] && !SPECIAL_SEGS.includes(subParts[0].toLowerCase())
+    ? subParts[0].toUpperCase()
+    : null;
+  const view = subParts.length === 0              ? 'list'
+    : subParts[0] === 'create'                    ? 'create'
+    : subParts[0] === 'join'                      ? 'join'
+    : subParts[0] === 'jules-rimet'               ? 'jules-rimet'
+    : subParts[1] === 'standings'                 ? 'standings'
+    : subParts[1] === 'h2h'                       ? 'h2h'
+    : subParts.length === 1                       ? 'home'
+    : 'home';
+
+  // Opponent for H2H — encoded in URL search params
+  const searchParams = new URLSearchParams(location.search);
+  const opponent = view === 'h2h' && searchParams.get('userId')
+    ? { userId: searchParams.get('userId'), name: decodeURIComponent(searchParams.get('name') || 'Opponent') }
+    : null;
+
   const [leagueName, setLeagueName] = useState('');
   const [joinCode, setJoinCode]     = useState('');
   const [standings, setStandings]   = useState(null);
   const [leagueInfo, setLeagueInfo] = useState(null); // server-side league metadata (includes created_by)
   const [loading, setLoading]       = useState(false);
-  const [opponent, setOpponent]     = useState(null);
 
   // Jules Rimet Jackpot enquiry form state
   const [jrEmail, setJrEmail]           = useState('');
@@ -289,7 +318,8 @@ export default function LeagueManager({ user, predictions }) {
   const [jrSubmitted, setJrSubmitted]   = useState(false);
   const [jrError, setJrError]           = useState('');
 
-  const activeLeague = savedLeagues.find(l => l.code === activeCode) || null;
+  const activeLeague = savedLeagues.find(l => l.code === activeCode)
+    || (leagueInfo ? { code: leagueInfo.code, name: leagueInfo.name } : null);
 
   // Fetch league metadata (including created_by) as soon as a league is opened.
   // This resolves ownership before standings are ever loaded.
@@ -309,6 +339,14 @@ export default function LeagueManager({ user, predictions }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCode]);
 
+  // Auto-load standings when navigating directly to the standings URL
+  useEffect(() => {
+    if (view === 'standings' && activeCode && !standings) {
+      loadStandings();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, activeCode]);
+
   // Is the current user the creator of the active league?
   const isOwner = !!(
     leagueInfo?.created_by === user.id ||
@@ -327,18 +365,16 @@ export default function LeagueManager({ user, predictions }) {
   function purgeLeague(code) {
     setSavedLeagues(prev => prev.filter(l => l.code !== code));
     if (activeCode === code) {
-      setActiveCode(null);
       setStandings(null);
       setLeagueInfo(null);
-      setView('list');
+      navigate('/league');
     }
   }
 
   function openLeague(code) {
-    setActiveCode(code);
     setStandings(null);
     setLeagueInfo(null);
-    setView('home');
+    navigate('/league/' + code);
   }
 
   // ── Create league ────────────────────────────────────────────────────────────
@@ -395,13 +431,13 @@ export default function LeagueManager({ user, predictions }) {
       const data = await apiFetch(`/leagues/${activeCode}/standings`);
       setStandings(data.standings);
       setLeagueInfo(data.league); // includes created_by
-      setView('standings');
+      navigate(`/league/${activeCode}/standings`);
     } catch (e) {
       toast.error(e.message);
     } finally {
       setLoading(false);
     }
-  }, [activeCode]);
+  }, [activeCode, navigate]);
 
   // ── Leave league (self-remove) ───────────────────────────────────────────────
   async function leaveLeague() {
@@ -478,7 +514,7 @@ export default function LeagueManager({ user, predictions }) {
     return (
       <div className="animate-fade-in mt-6 max-w-md mx-auto">
         <button
-          onClick={() => { setView('list'); setJrSubmitted(false); setJrEmail(''); setJrError(''); }}
+          onClick={() => { setJrSubmitted(false); setJrEmail(''); setJrError(''); navigate('/league'); }}
           className="text-slate-400 hover:text-white text-sm mb-5 block transition-colors"
         >
           ← My Leagues
@@ -567,24 +603,36 @@ export default function LeagueManager({ user, predictions }) {
   }
 
   // H2H view
-  if (view === 'h2h' && opponent && activeCode) {
+  if (view === 'h2h' && activeCode) {
+    if (!opponent) {
+      // No opponent in URL — redirect back to standings
+      navigate(`/league/${activeCode}/standings`, { replace: true });
+      return null;
+    }
     return (
       <HeadToHead
         leagueCode={activeCode}
         opponent={opponent}
         myPredictions={predictions ?? {}}
         myName={user.name}
-        onBack={() => setView('standings')}
+        onBack={() => navigate(`/league/${activeCode}/standings`)}
       />
     );
   }
 
   // Standings view
-  if (view === 'standings' && standings) {
+  if (view === 'standings') {
+    if (!standings) {
+      return (
+        <div className="animate-fade-in mt-6 text-center py-16">
+          <p className="text-slate-400 text-sm">{loading ? 'Loading standings…' : 'Loading…'}</p>
+        </div>
+      );
+    }
     return (
       <div className="animate-fade-in mt-6">
         <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => setView('home')} className="text-slate-400 hover:text-white text-sm transition-colors">
+          <button onClick={() => navigate(`/league/${activeCode}`)} className="text-slate-400 hover:text-white text-sm transition-colors">
             ← Back
           </button>
           <h2 className="text-white font-black text-xl">{activeLeague?.name}</h2>
@@ -600,7 +648,7 @@ export default function LeagueManager({ user, predictions }) {
             standings={standings}
             currentUser={user}
             isOwner={isOwner}
-            onSelectOpponent={s => { setOpponent({ name: s.name, userId: s.userId }); setView('h2h'); }}
+            onSelectOpponent={s => navigate(`/league/${activeCode}/h2h?userId=${encodeURIComponent(s.userId)}&name=${encodeURIComponent(s.name)}`)}
             onRemoveMember={removeMember}
           />
         </div>
@@ -626,11 +674,11 @@ export default function LeagueManager({ user, predictions }) {
   }
 
   // League home view (single league selected)
-  if (view === 'home' && activeLeague) {
+  if (view === 'home' && activeCode) {
     return (
       <div className="animate-fade-in mt-6 space-y-4">
         {/* Back to list */}
-        <button onClick={() => { setActiveCode(null); setView('list'); }}
+        <button onClick={() => navigate('/league')}
           className="text-slate-400 hover:text-white text-sm transition-colors"
         >
           ← My Leagues
@@ -695,7 +743,7 @@ export default function LeagueManager({ user, predictions }) {
   if (view === 'create') {
     return (
       <div className="animate-fade-in mt-6 max-w-md mx-auto">
-        <button onClick={() => setView('list')} className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors">
+        <button onClick={() => navigate('/league')} className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors">
           ← Back
         </button>
         <div className="card">
@@ -733,7 +781,7 @@ export default function LeagueManager({ user, predictions }) {
   if (view === 'join') {
     return (
       <div className="animate-fade-in mt-6 max-w-md mx-auto">
-        <button onClick={() => setView('list')} className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors">
+        <button onClick={() => navigate('/league')} className="text-slate-400 hover:text-white text-sm mb-4 block transition-colors">
           ← Back
         </button>
         <div className="card">
@@ -785,7 +833,7 @@ export default function LeagueManager({ user, predictions }) {
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
-              onClick={() => setView('create')}
+              onClick={() => navigate('/league/create')}
               className="card hover:border-gold-500/50 hover:bg-pitch-700/50 transition-all cursor-pointer text-center py-6"
             >
               <div className="text-3xl mb-2">➕</div>
@@ -794,7 +842,7 @@ export default function LeagueManager({ user, predictions }) {
             </button>
 
             <button
-              onClick={() => setView('join')}
+              onClick={() => navigate('/league/join')}
               className="card hover:border-gold-500/50 hover:bg-pitch-700/50 transition-all cursor-pointer text-center py-6"
             >
               <div className="text-3xl mb-2">🔗</div>
@@ -803,7 +851,7 @@ export default function LeagueManager({ user, predictions }) {
             </button>
           </div>
 
-          <JulesRimetTile onOpen={() => setView('jules-rimet')} />
+          <JulesRimetTile onOpen={() => navigate('/league/jules-rimet')} />
 
           <div className="mt-4 card border-pitch-600/50">
             <h3 className="text-sm font-bold text-slate-300 mb-3">How it works</h3>
@@ -850,19 +898,19 @@ export default function LeagueManager({ user, predictions }) {
             ))}
           </div>
 
-          <JulesRimetTile onOpen={() => setView('jules-rimet')} />
+          <JulesRimetTile onOpen={() => navigate('/league/jules-rimet')} />
 
           {/* Always-visible create + join buttons */}
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => setView('create')}
+              onClick={() => navigate('/league/create')}
               className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-pitch-600
                          text-slate-300 hover:border-gold-500/50 hover:text-gold-400 transition-all text-sm font-semibold"
             >
               ➕ Create new
             </button>
             <button
-              onClick={() => setView('join')}
+              onClick={() => navigate('/league/join')}
               className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-pitch-600
                          text-slate-300 hover:border-gold-500/50 hover:text-gold-400 transition-all text-sm font-semibold"
             >
