@@ -434,6 +434,32 @@ app.post('/api/admin/email/daily-results', async (req, res) => {
   }
 });
 
+// POST /api/admin/email/daily-prediction-reminder — manually trigger daily prediction reminder
+app.post('/api/admin/email/daily-prediction-reminder', async (req, res) => {
+  if (!await verifyAdmin(req, res)) return;
+  const { date } = req.body;
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+  try {
+    const result = await emailService.sendDailyPredictionReminderEmail(supabase, date || null);
+    res.json({ message: 'Daily prediction reminder sent', ...result });
+  } catch (e) {
+    console.error('[email] Daily prediction reminder error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Sends daily prediction reminder emails for unpredicted fixtures today — runs at 20:00 UTC (21:00 BST)
+app.get('/api/cron/daily-prediction-reminder', async (req, res) => {
+  if (!verifyCron(req, res)) return;
+  try {
+    const result = await emailService.sendDailyPredictionReminderEmail(supabase);
+    res.json({ ok: true, ...result, timestamp: new Date().toISOString() });
+  } catch (e) {
+    console.error('[cron] Daily prediction reminder error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Sync status (admin only) ─────────────────────────────────────────────────
 // In Vercel's serverless environment each invocation is stateless, so the
 // in-memory `status.enabled` flag is always false even when the API key is set.

@@ -746,14 +746,19 @@ function EmailPanel() {
 
   const actions = [
     {
+      id: 'daily-prediction-reminder',
+      label: '⏰ Send Daily Prediction Reminder',
+      desc: 'Emails users who haven\'t predicted today\'s fixtures. Auto-fires at 21:00 BST on match days.',
+    },
+    {
       id: 'daily-results',
       label: '⚽ Send Today\'s Results Email',
       desc: 'Sends today\'s result digest to all users (auto-fires at 23:00 BST)',
     },
     {
       id: 'reminder',
-      label: '⏰ Send Reminder Emails',
-      desc: 'Emails all users who have unfilled predictions',
+      label: '📋 Send Pre-Tournament Reminder',
+      desc: 'Emails all users who still have unfilled predictions across the whole tournament',
     },
     {
       id: 'digest',
@@ -766,8 +771,8 @@ function EmailPanel() {
     <div className="card mb-6">
       <h3 className="text-sm font-bold text-white mb-1">✉️ Email Notifications</h3>
       <p className="text-slate-500 text-xs mb-4">
-        The daily results email fires automatically at 23:00 BST each evening.
-        Use these buttons to trigger emails manually at any time.
+        Prediction reminders auto-fire at 21:00 BST and results emails at 23:00 BST on match days.
+        Use these buttons to trigger any email manually at any time.
       </p>
       <div className="space-y-3">
         {actions.map(({ id, label, desc }) => (

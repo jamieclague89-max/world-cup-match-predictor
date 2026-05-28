@@ -311,6 +311,72 @@ function weeklyDigestHtml({ name, standings, resultsCount, userRank }) {
   `);
 }
 
+// ── Template: Daily prediction reminder ──────────────────────────────────────
+function dailyPredictionReminderHtml({ name, dateLabel, missingFixtures, totalToday }) {
+  const allMissing = missingFixtures.length === totalToday;
+
+  const fixtureRows = missingFixtures.map(f => `
+    <tr style="border-top:1px solid #1e2d3d;">
+      <td style="padding:12px 0;font-size:14px;">
+        <span style="font-weight:700;color:#ffffff;">${f.homeTeam}</span>
+        <span style="color:#3a4f63;margin:0 8px;">vs</span>
+        <span style="font-weight:700;color:#ffffff;">${f.awayTeam}</span>
+      </td>
+      <td style="padding:12px 0;text-align:right;font-size:12px;color:#e05252;font-weight:700;white-space:nowrap;">
+        Not predicted
+      </td>
+    </tr>`
+  ).join('');
+
+  const alreadyDone = totalToday - missingFixtures.length;
+  const doneNote = alreadyDone > 0
+    ? `<p style="margin:0 0 20px;font-size:13px;color:#5cb85c;text-align:center;">
+         ✅ You've already predicted ${alreadyDone} of today's ${totalToday} match${totalToday !== 1 ? 'es' : ''} — just ${missingFixtures.length} to go!
+       </p>`
+    : '';
+
+  return baseTemplate(`Predictions needed for ${dateLabel}`, `
+    <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">Hi ${name},</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#e05252;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0;font-size:36px;">${allMissing ? '⚠️' : '⏰'}</p>
+        <p style="margin:8px 0 0;font-size:20px;font-weight:900;color:#ffffff;">
+          ${missingFixtures.length} match${missingFixtures.length !== 1 ? 'es' : ''} still need${missingFixtures.length === 1 ? 's' : ''} a prediction
+        </p>
+        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.8);">
+          Predictions lock at kick-off — don't miss out on points!
+        </p>
+      </td></tr>
+    </table>
+
+    ${doneNote}
+
+    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#8899aa;
+      text-transform:uppercase;letter-spacing:1px;">Today's unpredicted matches — ${dateLabel}</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tbody>
+        ${fixtureRows}
+      </tbody>
+    </table>
+
+    <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
+      Once the whistle blows, predictions are permanently locked for that match.
+      Head to the app now and get your picks in before kick-off!
+    </p>
+
+    <p style="margin:0;text-align:center;">
+      <a href="${APP_URL}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
+        font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+        Make my predictions →
+      </a>
+    </p>
+  `);
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -597,4 +663,125 @@ async function sendWeeklyDigest(supabase) {
   }
 }
 
-module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest };
+/**
+ * Send a daily prediction reminder email to every user who has unpredicted fixtures today.
+ * Fires automatically at 20:00 UTC (21:00 BST) each day via cron.
+ * Can also be triggered manually from the admin panel.
+ *
+ * Only sends to users who are missing at least one prediction for a fixture
+ * scheduled today (BST) that hasn't already had a result entered.
+ *
+ * @param {object} supabase - Supabase admin client
+ * @param {string} [dateOverride] - ISO date string e.g. '2026-06-11' (defaults to today BST)
+ */
+async function sendDailyPredictionReminderEmail(supabase, dateOverride) {
+  if (!isConfigured()) return { sent: 0, skipped: 0, total: 0 };
+
+  try {
+    // Today's date in BST (UTC+1)
+    const now     = new Date();
+    const bstDate = new Date(now.getTime() + 60 * 60 * 1000);
+    const todayStr = dateOverride || bstDate.toISOString().slice(0, 10);
+
+    const dateLabel = new Date(todayStr + 'T12:00:00').toLocaleDateString('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
+
+    // Find all fixtures scheduled today
+    const fixtures = require('./fixtures-lookup');
+    const todayFixtures = fixtures.filter(f => f.date === todayStr);
+
+    if (todayFixtures.length === 0) {
+      console.log(`[email] No fixtures on ${todayStr} — skipping daily prediction reminder`);
+      return { sent: 0, skipped: 0, total: 0 };
+    }
+
+    // Exclude fixtures that already have a confirmed result (game played)
+    const { data: resultRows } = await supabase
+      .from('results')
+      .select('fixture_id')
+      .in('fixture_id', todayFixtures.map(f => f.id));
+
+    const completedIds = new Set((resultRows || []).map(r => r.fixture_id));
+    const pendingFixtures = todayFixtures.filter(f => !completedIds.has(f.id));
+
+    if (pendingFixtures.length === 0) {
+      console.log(`[email] All fixtures on ${todayStr} already have results — skipping`);
+      return { sent: 0, skipped: 0, total: todayFixtures.length };
+    }
+
+    // Fetch existing predictions for today's pending fixtures
+    const { data: allPreds } = await supabase
+      .from('predictions')
+      .select('user_id, fixture_id, home_score, away_score')
+      .in('fixture_id', pendingFixtures.map(f => f.id));
+
+    // Build predicted-fixture-id sets per user
+    const userPredictedIds = {};
+    (allPreds || []).forEach(pr => {
+      // Only count as predicted if both scores are filled in (not null / empty string)
+      const hasBoth =
+        pr.home_score !== null && pr.home_score !== '' &&
+        pr.away_score !== null && pr.away_score !== '';
+      if (!hasBoth) return;
+      if (!userPredictedIds[pr.user_id]) userPredictedIds[pr.user_id] = new Set();
+      userPredictedIds[pr.user_id].add(pr.fixture_id);
+    });
+
+    // Fetch all profiles and their auth emails
+    const { data: profiles } = await supabase.from('profiles').select('id, name');
+    if (!profiles?.length) return { sent: 0, skipped: 0, total: pendingFixtures.length };
+
+    const users = await getAllUsers(supabase);
+    const emailMap = {};
+    users.forEach(u => { emailMap[u.id] = u.email; });
+
+    let sent = 0, skipped = 0;
+    const sends = [];
+
+    for (const profile of profiles) {
+      if (!emailMap[profile.id]) { skipped++; continue; }
+
+      const predicted   = userPredictedIds[profile.id] || new Set();
+      const missing     = pendingFixtures.filter(f => !predicted.has(f.id));
+
+      if (missing.length === 0) {
+        // User has predicted all of today's fixtures — no email needed
+        skipped++;
+        continue;
+      }
+
+      sends.push(
+        resend.emails.send({
+          from:    FROM,
+          to:      emailMap[profile.id],
+          subject: `⏰ ${missing.length} prediction${missing.length !== 1 ? 's' : ''} needed today — ${dateLabel}`,
+          html:    dailyPredictionReminderHtml({
+            name:            profile.name,
+            dateLabel,
+            missingFixtures: missing,
+            totalToday:      pendingFixtures.length,
+          }),
+        })
+      );
+    }
+
+    if (sends.length === 0) {
+      console.log(`[email] Daily prediction reminder (${todayStr}): all users fully predicted — no emails sent`);
+      return { sent: 0, skipped, total: pendingFixtures.length };
+    }
+
+    const results = await Promise.allSettled(sends);
+    sent  = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    console.log(`[email] Daily prediction reminder (${todayStr}): ${sent} sent, ${failed} failed, ${skipped} skipped (already predicted or no email)`);
+    return { sent, skipped, total: pendingFixtures.length };
+
+  } catch (err) {
+    console.error('[email] sendDailyPredictionReminderEmail error:', err.message);
+    throw err;
+  }
+}
+
+module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail };
