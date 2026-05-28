@@ -21,7 +21,8 @@ import CountdownTicker  from './components/CountdownTicker';
 import ScoringGuide     from './components/ScoringGuide';
 import BackToTop        from './components/BackToTop';
 import PreferencesPage  from './components/PreferencesPage';
-import SettingsPage     from './components/SettingsPage';
+import SettingsPage        from './components/SettingsPage';
+import ResetPasswordPage   from './components/ResetPasswordPage';
 
 // ── Default preferences ───────────────────────────────────────────────────────
 const DEFAULT_PREFS = {
@@ -116,8 +117,9 @@ export default function App() {
   }
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const [session,  setSession]  = useState(undefined);
-  const [profile,  setProfile]  = useState(undefined);
+  const [session,    setSession]    = useState(undefined);
+  const [profile,    setProfile]    = useState(undefined);
+  const [recovering, setRecovering] = useState(false);
   const [predictions,  setPredictions]  = useState({});
   const [fixtureOdds,  setFixtureOdds]  = useState({});
   const [activeTab,   setActiveTab]   = useState('predictions');
@@ -141,8 +143,9 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session ?? null);
+        if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       }
     );
 
@@ -312,6 +315,13 @@ export default function App() {
 
   if (session === undefined || (session && profile === undefined)) {
     return <LoadingScreen />;
+  }
+
+  // Password recovery — show reset form after user clicks the email link
+  if (recovering) {
+    return (
+      <ResetPasswordPage onDone={() => setRecovering(false)} />
+    );
   }
 
   if (!session) {

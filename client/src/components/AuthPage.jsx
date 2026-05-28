@@ -26,6 +26,7 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   function clearError() { setError(''); }
 
@@ -72,6 +73,19 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
     }
   }
 
+  async function handleForgotPassword(e) {
+    e.preventDefault();
+    setError('');
+    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    setLoading(true);
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}`,
+    });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    setResetSent(true);
+  }
+
   async function handleGoogle() {
     setError('');
     setGoogleLoading(true);
@@ -85,6 +99,87 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
       setGoogleLoading(false);
     }
     // Otherwise the page will redirect to Google — no need to setLoading(false)
+  }
+
+  // ── Forgot password: reset link sent screen ───────────────────────────────
+  if (resetSent) {
+    return (
+      <div className="min-h-screen bg-pitch-900 flex items-center justify-center px-4">
+        <div className="card max-w-md w-full text-center animate-fade-in">
+          <div className="text-6xl mb-4">📧</div>
+          <h2 className="text-2xl font-black text-white mb-3">Check your inbox</h2>
+          <p className="text-slate-400 leading-relaxed mb-2">We sent a password reset link to</p>
+          <p className="text-white font-semibold mb-6">{email}</p>
+          <p className="text-slate-400 text-sm mb-8">
+            Click the link in that email to set a new password. The link expires in 1 hour.
+          </p>
+          <button onClick={onBack} className="btn-primary w-full py-3 mb-3">Back to home</button>
+          <p className="text-slate-600 text-xs">
+            Didn't receive it? Check your spam folder, or{' '}
+            <button className="text-gold-400 hover:underline" onClick={() => { setResetSent(false); setError(''); }}>
+              try again
+            </button>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Forgot password form ───────────────────────────────────────────────────
+  if (mode === 'forgot') {
+    return (
+      <div className="min-h-screen bg-pitch-900 flex items-center justify-center px-4">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gold-500 opacity-[0.03] rounded-full blur-3xl" />
+        </div>
+        <div className="relative w-full max-w-md animate-fade-in">
+          <button
+            onClick={() => { setMode('signin'); setError(''); }}
+            className="text-slate-500 hover:text-slate-300 text-sm mb-6 flex items-center gap-1.5 transition-colors"
+          >
+            ← Back to sign in
+          </button>
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-3">🏆</div>
+            <h1 className="text-2xl font-black text-white">World Cup 2026</h1>
+            <p className="text-gold-400 text-sm font-semibold mt-0.5">Match Predictor</p>
+          </div>
+          <div className="card">
+            <h2 className="text-lg font-black text-white mb-2">Forgot your password?</h2>
+            <p className="text-slate-400 text-sm mb-6">
+              Enter your email and we'll send you a link to reset your password.
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError(''); }}
+                  placeholder="you@example.com"
+                  autoFocus
+                  className={inputClass}
+                />
+              </div>
+              {error && (
+                <div className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2.5">
+                  {error}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary w-full py-3 font-bold disabled:opacity-50"
+              >
+                {loading ? 'Sending…' : 'Send reset link →'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // ── Email sent / verify screen ─────────────────────────────────────────────
@@ -230,6 +325,19 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
             {error && (
               <div className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2.5">
                 {error}
+              </div>
+            )}
+
+            {/* Forgot password link — sign in only */}
+            {mode === 'signin' && (
+              <div className="text-right -mt-2">
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setError(''); }}
+                  className="text-xs text-slate-500 hover:text-gold-400 transition-colors"
+                >
+                  Forgot password?
+                </button>
               </div>
             )}
 
