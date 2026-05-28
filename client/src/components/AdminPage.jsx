@@ -723,20 +723,21 @@ function NotificationsPanel() {
 
 // ── Email notification panel ──────────────────────────────────────────────────
 function EmailPanel() {
-  const [sending, setSending] = useState({});
-  const [results, setResults] = useState({});
+  const [sending, setSending]         = useState({});
+  const [results, setResults]         = useState({});
+  const [reminderDate, setReminderDate] = useState('2026-06-11'); // first match day as default test date
 
-  async function trigger(type) {
+  async function trigger(type, body = {}) {
     setSending(s => ({ ...s, [type]: true }));
     setResults(s => ({ ...s, [type]: null }));
     try {
       const res = await fetch(`/api/admin/email/${type}`, {
         method: 'POST',
         headers: await getAuthHeaders(),
-        body: JSON.stringify({}),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      setResults(s => ({ ...s, [type]: res.ok ? '✅ ' + data.message : '❌ ' + data.error }));
+      setResults(s => ({ ...s, [type]: res.ok ? '✅ ' + data.message : '❌ ' + (data.error || 'Unknown error') }));
     } catch (e) {
       setResults(s => ({ ...s, [type]: '❌ ' + e.message }));
     } finally {
@@ -744,12 +745,7 @@ function EmailPanel() {
     }
   }
 
-  const actions = [
-    {
-      id: 'daily-prediction-reminder',
-      label: '⏰ Send Daily Prediction Reminder',
-      desc: 'Emails users who haven\'t predicted today\'s fixtures. Auto-fires at 00:01 BST and 09:00 BST on match days.',
-    },
+  const simpleActions = [
     {
       id: 'daily-results',
       label: '⚽ Send Today\'s Results Email',
@@ -774,8 +770,47 @@ function EmailPanel() {
         Prediction reminders auto-fire at 00:01 BST and 09:00 BST, results emails at 23:00 BST on match days.
         Use these buttons to trigger any email manually at any time.
       </p>
-      <div className="space-y-3">
-        {actions.map(({ id, label, desc }) => (
+
+      <div className="space-y-4">
+
+        {/* ── Daily prediction reminder — has its own date picker ── */}
+        <div className="bg-pitch-700/30 border border-pitch-700 rounded-xl p-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-300">⏰ Send Daily Prediction Reminder</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Emails users who haven't predicted the chosen date's fixtures.
+                Auto-fires at 00:01 BST and 09:00 BST on match days.
+              </p>
+              {results['daily-prediction-reminder'] && (
+                <p className="text-xs mt-1.5 font-semibold text-slate-400">{results['daily-prediction-reminder']}</p>
+              )}
+            </div>
+            <button
+              onClick={() => trigger('daily-prediction-reminder', { date: reminderDate })}
+              disabled={sending['daily-prediction-reminder']}
+              className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0 disabled:opacity-50"
+            >
+              {sending['daily-prediction-reminder'] ? 'Sending…' : 'Send now'}
+            </button>
+          </div>
+          <div className="mt-2.5 flex items-center gap-2">
+            <label className="text-xs text-slate-500 flex-shrink-0">For date:</label>
+            <input
+              type="date"
+              value={reminderDate}
+              onChange={e => setReminderDate(e.target.value)}
+              className="bg-pitch-900 border border-pitch-600 rounded px-2 py-1 text-white text-xs
+                         focus:border-gold-400 focus:outline-none"
+            />
+            <span className="text-xs text-slate-600">
+              Set to a match day (e.g. 2026-06-11) to preview the email
+            </span>
+          </div>
+        </div>
+
+        {/* ── Simple one-click email actions ── */}
+        {simpleActions.map(({ id, label, desc }) => (
           <div key={id} className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-slate-300">{label}</p>
@@ -793,6 +828,7 @@ function EmailPanel() {
             </button>
           </div>
         ))}
+
       </div>
       <p className="text-slate-600 text-xs mt-4 border-t border-pitch-700 pt-3">
         📌 While using <code className="text-slate-500">onboarding@resend.dev</code>, emails only
