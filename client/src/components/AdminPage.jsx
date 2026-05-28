@@ -727,6 +727,49 @@ function EmailPanel() {
   const [results, setResults]         = useState({});
   const [reminderDate, setReminderDate] = useState('2026-06-11'); // first match day as default test date
 
+  // Jules Rimet invite state
+  const [jrEmails,     setJrEmails]     = useState('');
+  const [jrLeagueCode, setJrLeagueCode] = useState('');
+  const [jrSending,    setJrSending]    = useState(false);
+  const [jrResult,     setJrResult]     = useState('');
+
+  async function sendJulesRimetInvite() {
+    setJrSending(true);
+    setJrResult('');
+    const emails = jrEmails
+      .split(/[\n,;]+/)
+      .map(e => e.trim())
+      .filter(e => e.includes('@'));
+
+    if (emails.length === 0) {
+      setJrResult('❌ Please enter at least one valid email address');
+      setJrSending(false);
+      return;
+    }
+    if (!jrLeagueCode.trim()) {
+      setJrResult('❌ Please enter a league code');
+      setJrSending(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/email/jules-rimet-invite', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ emails, leagueCode: jrLeagueCode.trim() }),
+      });
+      const data = await res.json();
+      setJrResult(res.ok ? '✅ ' + data.message : '❌ ' + (data.error || 'Unknown error'));
+      if (res.ok) {
+        setJrEmails('');
+      }
+    } catch (e) {
+      setJrResult('❌ ' + e.message);
+    } finally {
+      setJrSending(false);
+    }
+  }
+
   async function trigger(type, body = {}) {
     setSending(s => ({ ...s, [type]: true }));
     setResults(s => ({ ...s, [type]: null }));
@@ -828,6 +871,55 @@ function EmailPanel() {
             </button>
           </div>
         ))}
+
+        {/* ── Jules Rimet invite code ── */}
+        <div className="border-t border-pitch-700 pt-4">
+          <p className="text-sm font-semibold text-slate-300 mb-0.5">🏆 Send Jules Rimet Invite Code</p>
+          <p className="text-xs text-slate-500 mb-3">
+            Manually send the private league invite code to one or more users who have paid their entry fee.
+            Separate multiple addresses with commas, semicolons, or new lines.
+          </p>
+
+          <div className="space-y-2.5">
+            <div>
+              <label className="text-xs text-slate-400 font-semibold block mb-1">League Code</label>
+              <input
+                type="text"
+                value={jrLeagueCode}
+                onChange={e => setJrLeagueCode(e.target.value.toUpperCase())}
+                placeholder="e.g. XKQT7F"
+                maxLength={8}
+                className="w-full bg-pitch-900 border border-pitch-600 rounded px-3 py-2 text-white text-sm
+                           font-mono tracking-widest placeholder-slate-600
+                           focus:border-gold-400 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 font-semibold block mb-1">Recipient Email(s)</label>
+              <textarea
+                value={jrEmails}
+                onChange={e => setJrEmails(e.target.value)}
+                placeholder="user@example.com&#10;another@example.com"
+                rows={3}
+                className="w-full bg-pitch-900 border border-pitch-600 rounded px-3 py-2 text-white text-sm
+                           placeholder-slate-600 focus:border-gold-400 focus:outline-none resize-none"
+              />
+            </div>
+
+            {jrResult && (
+              <p className="text-xs font-semibold text-slate-400">{jrResult}</p>
+            )}
+
+            <button
+              onClick={sendJulesRimetInvite}
+              disabled={jrSending || !jrLeagueCode.trim() || !jrEmails.trim()}
+              className="btn-primary text-xs py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {jrSending ? 'Sending…' : '🎉 Send Invite Code'}
+            </button>
+          </div>
+        </div>
 
       </div>
       <p className="text-slate-600 text-xs mt-4 border-t border-pitch-700 pt-3">

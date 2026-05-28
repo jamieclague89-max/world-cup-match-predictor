@@ -464,6 +464,85 @@ function julesRimetPaymentHtml({ email, name }) {
   `);
 }
 
+// ── Template: Jules Rimet — invite code delivery ─────────────────────────────
+function julesRimetInviteHtml({ leagueCode }) {
+  return baseTemplate('Jules Rimet Jackpot — your invite code', `
+    <p style="margin:0 0 20px;font-size:16px;color:#8899aa;">Hi,</p>
+
+    <!-- Hero -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#5cb85c;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:24px;text-align:center;">
+        <p style="margin:0;font-size:40px;">🎉</p>
+        <p style="margin:10px 0 0;font-size:22px;font-weight:900;color:#ffffff;">
+          Payment Confirmed — You're In!
+        </p>
+        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">
+          Jules Rimet Jackpot · World Cup 2026 Predictor
+        </p>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 20px;font-size:14px;color:#8899aa;line-height:1.6;">
+      Your payment has been confirmed. Here is your <strong style="color:#ffffff;">private invite code</strong>
+      to join the Jules Rimet Jackpot league — keep it safe and don't share it with anyone else.
+    </p>
+
+    <!-- Invite code -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:28px;text-align:center;">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#8899aa;
+          text-transform:uppercase;letter-spacing:2px;">Your Invite Code</p>
+        <p style="margin:0;font-size:42px;font-weight:900;color:#c9a227;
+          font-family:monospace;letter-spacing:0.3em;">${leagueCode}</p>
+      </td></tr>
+    </table>
+
+    <!-- How to join -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:20px;">
+        <p style="margin:0 0 14px;font-size:11px;font-weight:700;color:#c9a227;
+          text-transform:uppercase;letter-spacing:1px;">How to join the league</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;width:24px;font-size:18px;">1️⃣</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Open the <strong style="color:#ffffff;">World Cup 2026 Predictor</strong> app
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;font-size:18px;">2️⃣</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Go to <strong style="color:#ffffff;">My League → Join League</strong>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;font-size:18px;">3️⃣</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Enter your code: <strong style="color:#c9a227;font-family:monospace;font-size:15px;">${leagueCode}</strong>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;font-size:18px;">⚽</td>
+            <td style="padding:6px 0 6px 8px;font-size:13px;color:#8899aa;line-height:1.5;">
+              Predict every match and climb the leaderboard — <strong style="color:#c9a227;">good luck!</strong>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+
+    <p style="margin:0;text-align:center;">
+      <a href="${APP_URL}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
+        font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+        Join the league →
+      </a>
+    </p>
+  `);
+}
+
 // ── Template: Jules Rimet admin payment notification ─────────────────────────
 function julesRimetAdminNotificationHtml({ userEmail, userName }) {
   return baseTemplate('Jules Rimet — payment declared', `
@@ -1053,4 +1132,44 @@ async function sendJulesRimetPaymentDeclared(supabase, userEmail, userName) {
   }
 }
 
-module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry, sendJulesRimetPaymentDeclared };
+/**
+ * Send a Jules Rimet Jackpot invite code email to one or more recipients.
+ * Called manually from the admin panel once a user's payment is verified.
+ *
+ * @param {string[]} emails     - Array of recipient email addresses
+ * @param {string}   leagueCode - The private league code to include in the email
+ */
+async function sendJulesRimetInvite(emails, leagueCode) {
+  if (!isConfigured()) return { sent: 0, failed: 0 };
+  if (!emails?.length) throw new Error('At least one email address is required');
+  if (!leagueCode?.trim()) throw new Error('League code is required');
+
+  const code = leagueCode.trim().toUpperCase();
+  const html = julesRimetInviteHtml({ leagueCode: code });
+
+  const sends = emails.map(email =>
+    resend.emails.send({
+      from:    FROM,
+      to:      email.trim().toLowerCase(),
+      subject: `🎉 Jules Rimet Jackpot — your invite code is ${code}`,
+      html,
+    })
+  );
+
+  const results = await Promise.allSettled(sends);
+  const sent   = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+
+  if (failed > 0) {
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`[email] Jules Rimet invite failed for ${emails[i]}:`, r.reason?.message);
+      }
+    });
+  }
+
+  console.log(`[email] Jules Rimet invite (code: ${code}): ${sent} sent, ${failed} failed`);
+  return { sent, failed };
+}
+
+module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry, sendJulesRimetPaymentDeclared, sendJulesRimetInvite };

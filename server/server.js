@@ -532,6 +532,30 @@ app.post('/api/admin/email/daily-results', async (req, res) => {
   }
 });
 
+// POST /api/admin/email/jules-rimet-invite — send invite code to one or more paid entrants
+app.post('/api/admin/email/jules-rimet-invite', async (req, res) => {
+  if (!await verifyAdmin(req, res)) return;
+  const { emails, leagueCode } = req.body;
+
+  if (!emails || !Array.isArray(emails) || emails.length === 0) {
+    return res.status(400).json({ error: 'At least one email address is required' });
+  }
+  if (!leagueCode?.trim()) {
+    return res.status(400).json({ error: 'League code is required' });
+  }
+
+  try {
+    const result = await emailService.sendJulesRimetInvite(emails, leagueCode.trim());
+    res.json({
+      message: `Invite sent to ${result.sent} recipient${result.sent !== 1 ? 's' : ''}${result.failed > 0 ? ` (${result.failed} failed)` : ''}`,
+      ...result,
+    });
+  } catch (e) {
+    console.error('[email] Jules Rimet invite error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/email/daily-prediction-reminder — manually trigger daily prediction reminder
 app.post('/api/admin/email/daily-prediction-reminder', async (req, res) => {
   if (!await verifyAdmin(req, res)) return;
