@@ -813,7 +813,7 @@ export default function LeagueManager({ user, predictions }) {
 
           <JulesRimetTile onOpen={() => setView('jules-rimet')} />
 
-          <div className="card border-pitch-600/50">
+          <div className="mt-4 card border-pitch-600/50">
             <h3 className="text-sm font-bold text-slate-300 mb-3">How it works</h3>
             <ul className="text-slate-400 text-xs space-y-2">
               <li>🎯 <strong className="text-slate-300">Exact scoreline</strong> — 5 pts</li>
