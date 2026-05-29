@@ -21,7 +21,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['system-ui', '-apple-system', 'sans-serif'],
+        sans:    ['Noto Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Noto Sans', 'system-ui', '-apple-system', 'sans-serif'],
       },
     },
   },

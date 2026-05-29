@@ -72,7 +72,7 @@ html.light .card {
 @layer base {
   body {
     @apply bg-pitch-900 text-slate-100 min-h-screen;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: 'Noto Sans', system-ui, -apple-system, sans-serif;
   }
 
   input[type='number']::-webkit-inner-spin-button,
