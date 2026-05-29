@@ -22,11 +22,12 @@ const TYPE_CONFIG = {
 };
 
 // ── Single notification row ───────────────────────────────────────────────────
-function NotificationRow({ notification, onRead }) {
+function NotificationRow({ notification, onRead, onNavigate }) {
   const cfg = TYPE_CONFIG[notification.type] || TYPE_CONFIG.result;
 
   function handleClick() {
     if (!notification.read) onRead(notification.id);
+    onNavigate();
   }
 
   return (
@@ -62,7 +63,7 @@ function NotificationRow({ notification, onRead }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function NotificationBell({ userId }) {
+export default function NotificationBell({ userId, setActiveTab }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
@@ -80,9 +81,13 @@ export default function NotificationBell({ userId }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Mark all read when panel opens (with a small delay so user sees the badge first)
   function handleOpen() {
     setOpen(o => !o);
+  }
+
+  function goToNotificationsPage() {
+    setOpen(false);
+    setActiveTab('notifications');
   }
 
   return (
@@ -161,20 +166,22 @@ export default function NotificationBell({ userId }) {
                   key={n.id}
                   notification={n}
                   onRead={markAsRead}
+                  onNavigate={goToNotificationsPage}
                 />
               ))
             )}
           </div>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="flex-shrink-0 px-4 py-2.5 border-t border-pitch-700
-                            bg-pitch-900/50 text-center">
-              <p className="text-[10px] text-slate-600">
-                Showing last {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
+          {/* Footer — always visible */}
+          <div className="flex-shrink-0 border-t border-pitch-700 bg-pitch-900/50">
+            <button
+              onClick={goToNotificationsPage}
+              className="w-full py-2.5 text-xs font-semibold text-gold-400
+                         hover:text-gold-300 transition-colors text-center"
+            >
+              See all notifications →
+            </button>
+          </div>
         </div>
       )}
     </div>

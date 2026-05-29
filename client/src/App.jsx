@@ -26,6 +26,7 @@ import PreferencesPage  from './components/PreferencesPage';
 import SettingsPage        from './components/SettingsPage';
 import ResetPasswordPage   from './components/ResetPasswordPage';
 import ErrorPage           from './components/ErrorPage';
+import NotificationsPage   from './components/NotificationsPage';
 
 // ── Default preferences ───────────────────────────────────────────────────────
 const DEFAULT_PREFS = {
@@ -484,7 +485,8 @@ export default function App() {
           </>
         )}
         {activeTab === 'league'      && <LeagueManager user={profile} predictions={predictions} userEmail={session.user.email} />}
-        {activeTab === 'rules'       && <RulesPage />}
+        {activeTab === 'rules'          && <RulesPage />}
+        {activeTab === 'notifications'  && <NotificationsPage userId={profile.id} />}
         {activeTab === 'leaderboard' && <Leaderboard user={profile} />}
         {activeTab === 'admin'       && (profile.is_admin ? <AdminPage /> : <ErrorPage code={403} onGoHome={() => setActiveTab('predictions')} />)}
         {activeTab === 'preferences' && (

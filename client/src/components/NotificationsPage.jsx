@@ -1,0 +1,127 @@
+import { useNotifications } from '../hooks/useNotifications';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)  return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+const TYPE_CONFIG = {
+  result:        { icon: '🏆', label: 'Match result'    },
+  deadline:      { icon: '⏰', label: 'Deadline'        },
+  leaderboard:   { icon: '📊', label: 'Leaderboard'     },
+  jules_payment: { icon: '💰', label: 'Jules Rimet'     },
+};
+
+// ── Single notification card ──────────────────────────────────────────────────
+function NotificationCard({ notification, onRead }) {
+  const cfg = TYPE_CONFIG[notification.type] || { icon: '🔔', label: 'Notification' };
+
+  function handleClick() {
+    if (!notification.read) onRead(notification.id);
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`w-full text-left rounded-xl border transition-colors p-4
+                  ${notification.read
+                    ? 'bg-pitch-800/50 border-pitch-700/50 opacity-70'
+                    : 'bg-pitch-800 border-pitch-700 hover:border-pitch-600'
+                  }`}
+    >
+      <div className="flex items-start gap-3">
+        {/* Unread dot */}
+        <div className="flex-shrink-0 mt-1.5">
+          <div className={`w-2 h-2 rounded-full ${notification.read ? 'bg-transparent' : 'bg-amber-400'}`} />
+        </div>
+
+        {/* Icon */}
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pitch-700 flex items-center justify-center text-lg">
+          {cfg.icon}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <p className={`text-sm font-bold leading-snug ${notification.read ? 'text-slate-400' : 'text-white'}`}>
+              {notification.title}
+            </p>
+            <span className="text-[10px] text-slate-500 whitespace-nowrap flex-shrink-0 mt-0.5">
+              {timeAgo(notification.created_at)}
+            </span>
+          </div>
+
+          {/* Full body — no line-clamp */}
+          <p className="text-sm text-slate-400 leading-relaxed">
+            {notification.body}
+          </p>
+
+          <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+            {cfg.label}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+export default function NotificationsPage({ userId }) {
+  const { notifications, unreadCount, loading, markAsRead, markAllRead } =
+    useNotifications(userId);
+
+  return (
+    <div className="animate-fade-in mt-6 max-w-2xl mx-auto">
+
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-white font-black text-xl leading-none">Notifications</h2>
+          {unreadCount > 0 && (
+            <p className="text-slate-500 text-xs mt-1">{unreadCount} unread</p>
+          )}
+        </div>
+        {unreadCount > 0 && (
+          <button
+            onClick={markAllRead}
+            className="text-xs text-slate-400 hover:text-white border border-pitch-700
+                       hover:border-pitch-600 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="text-center py-16 text-slate-500 text-sm">Loading…</div>
+      ) : notifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <span className="text-5xl mb-4">🔔</span>
+          <p className="text-slate-300 font-semibold">You're all caught up!</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Notifications about results, deadlines and league updates will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {notifications.map(n => (
+            <NotificationCard
+              key={n.id}
+              notification={n}
+              onRead={markAsRead}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

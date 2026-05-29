@@ -184,7 +184,7 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
 
           <div className="flex items-center gap-1">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            <NotificationBell userId={userId} />
+            <NotificationBell userId={userId} setActiveTab={setActiveTab} />
             <UserMenu
               user={user}
               onLogout={onLogout}
