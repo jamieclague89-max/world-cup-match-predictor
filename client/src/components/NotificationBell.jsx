@@ -15,9 +15,10 @@ function timeAgo(dateStr) {
 
 // ── Type config ───────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  result:      { icon: '🏆', colour: 'text-gold-400',  bg: 'bg-gold-500/10'  },
-  deadline:    { icon: '⏰', colour: 'text-amber-400', bg: 'bg-amber-500/10' },
-  leaderboard: { icon: '📊', colour: 'text-blue-400',  bg: 'bg-blue-500/10'  },
+  result:        { icon: '🏆', colour: 'text-gold-400',  bg: 'bg-gold-500/10'   },
+  deadline:      { icon: '⏰', colour: 'text-amber-400', bg: 'bg-amber-500/10'  },
+  leaderboard:   { icon: '📊', colour: 'text-blue-400',  bg: 'bg-blue-500/10'   },
+  jules_payment: { icon: '💰', colour: 'text-green-400', bg: 'bg-green-500/10'  },
 };
 
 // ── Single notification row ───────────────────────────────────────────────────
