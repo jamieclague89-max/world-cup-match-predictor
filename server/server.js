@@ -156,7 +156,7 @@ app.post('/api/leagues/:code/join', async (req, res) => {
 app.delete('/api/leagues/:code', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
-  const code   = req.params.code.toUpperCase();
+  const code   = req.params.code;
   const userId = req.body?.userId;
   if (!userId) return res.status(400).json({ error: 'userId required' });
 
@@ -178,7 +178,7 @@ app.delete('/api/leagues/:code', async (req, res) => {
 app.delete('/api/leagues/:code/members/:memberId', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
-  const code     = req.params.code.toUpperCase();
+  const code     = req.params.code;
   const memberId = req.params.memberId;
   const userId   = req.body?.userId; // the person making the request
   if (!userId) return res.status(400).json({ error: 'userId required' });
@@ -265,7 +265,7 @@ app.get('/api/leagues/:code/standings', async (req, res) => {
 app.get('/api/leagues/:code/member/:userId/predictions', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
-  const code   = req.params.code.toUpperCase();
+  const code   = req.params.code;
   const userId = req.params.userId;
 
   // Verify league exists and user is a member
