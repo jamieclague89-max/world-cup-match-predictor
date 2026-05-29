@@ -84,10 +84,11 @@ function fullDate(dateStr) {
 }
 
 const TYPE_CONFIG = {
-  result:        { icon: '🏆', label: 'Match result',   colour: 'text-gold-400',  bg: 'bg-gold-500/10'  },
-  deadline:      { icon: '⏰', label: 'Deadline',        colour: 'text-amber-400', bg: 'bg-amber-500/10' },
-  leaderboard:   { icon: '📊', label: 'Leaderboard',    colour: 'text-blue-400',  bg: 'bg-blue-500/10'  },
-  jules_payment: { icon: '💰', label: 'Jules Rimet',    colour: 'text-green-400', bg: 'bg-green-500/10' },
+  result:        { icon: '🏆', label: 'Match result',   colour: 'text-gold-400',   bg: 'bg-gold-500/10'   },
+  deadline:      { icon: '⏰', label: 'Deadline',        colour: 'text-amber-400',  bg: 'bg-amber-500/10'  },
+  leaderboard:   { icon: '📊', label: 'Leaderboard',    colour: 'text-blue-400',   bg: 'bg-blue-500/10'   },
+  jules_payment: { icon: '💰', label: 'Jules Rimet',    colour: 'text-green-400',  bg: 'bg-green-500/10'  },
+  welcome:       { icon: '👋', label: 'Welcome',         colour: 'text-purple-400', bg: 'bg-purple-500/10' },
 };
 
 // ── Left panel — inbox row ────────────────────────────────────────────────────
@@ -187,10 +188,11 @@ function NotificationDetail({ notification, onBack, onDelete }) {
         {/* Type badge */}
         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
                           rounded-full border ${cfg.colour}
-                          ${notification.type === 'result'        ? 'border-gold-500/30  bg-gold-500/10'  :
-                            notification.type === 'deadline'      ? 'border-amber-500/30 bg-amber-500/10' :
-                            notification.type === 'leaderboard'   ? 'border-blue-500/30  bg-blue-500/10'  :
-                            notification.type === 'jules_payment' ? 'border-green-500/30 bg-green-500/10' :
+                          ${notification.type === 'result'        ? 'border-gold-500/30   bg-gold-500/10'   :
+                            notification.type === 'deadline'      ? 'border-amber-500/30  bg-amber-500/10'  :
+                            notification.type === 'leaderboard'   ? 'border-blue-500/30   bg-blue-500/10'   :
+                            notification.type === 'jules_payment' ? 'border-green-500/30  bg-green-500/10'  :
+                            notification.type === 'welcome'       ? 'border-purple-500/30 bg-purple-500/10' :
                             'border-pitch-600 bg-pitch-700'}`}>
           {cfg.label}
         </span>

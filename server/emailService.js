@@ -1173,4 +1173,163 @@ async function sendJulesRimetInvite(emails, leagueCode) {
   return { sent, failed };
 }
 
-module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry, sendJulesRimetPaymentDeclared, sendJulesRimetInvite };
+// ── Template: Welcome email ───────────────────────────────────────────────────
+function welcomeEmailHtml({ name }) {
+  return baseTemplate('Welcome to World Cup 2026 Predictor! 🏆', `
+    <p style="margin:0 0 24px;font-size:16px;color:#8899aa;">Hi ${name},</p>
+
+    <!-- Hero -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#1a3a2a;border-radius:12px;margin-bottom:24px;border:1px solid #25d36630;">
+      <tr><td style="padding:28px 24px;text-align:center;">
+        <p style="margin:0;font-size:44px;">🏆</p>
+        <p style="margin:10px 0 6px;font-size:22px;font-weight:900;color:#ffffff;">
+          You're in — welcome!
+        </p>
+        <p style="margin:0;font-size:14px;color:#8899aa;line-height:1.5;">
+          Here's everything you need to know to get the most out of the predictor.
+        </p>
+      </td></tr>
+    </table>
+
+    <!-- Rules -->
+    <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#ffffff;">📖 How it works</p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 10px;font-size:13px;color:#8899aa;line-height:1.7;">
+          Predict the score of every World Cup 2026 match <strong style="color:#ffffff;">before kick-off</strong>.
+          Predictions lock the moment the whistle blows, so get yours in early.
+        </p>
+        <p style="margin:0;font-size:13px;color:#8899aa;line-height:1.7;">
+          You can also pick the <strong style="color:#ffffff;">first goalscorer</strong>
+          for a bonus on every match.
+        </p>
+      </td></tr>
+    </table>
+
+    <!-- Scoring -->
+    <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#ffffff;">🎯 Scoring</p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr style="border-bottom:1px solid #1e2d3d;">
+        <td style="padding:12px 16px;">
+          <p style="margin:0;font-size:13px;font-weight:700;color:#c9a227;">Exact score</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#3a4f63;">e.g. you predict 2-1, result is 2-1</p>
+        </td>
+        <td style="padding:12px 16px;text-align:right;white-space:nowrap;">
+          <span style="font-size:17px;font-weight:900;color:#c9a227;">+5 pts</span>
+        </td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e2d3d;">
+        <td style="padding:12px 16px;">
+          <p style="margin:0;font-size:13px;font-weight:700;color:#ffffff;">Correct result</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#3a4f63;">Right winner / draw, wrong score</p>
+        </td>
+        <td style="padding:12px 16px;text-align:right;white-space:nowrap;">
+          <span style="font-size:17px;font-weight:900;color:#5cb85c;">+3 pts</span>
+        </td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e2d3d;">
+        <td style="padding:12px 16px;">
+          <p style="margin:0;font-size:13px;font-weight:700;color:#ffffff;">Correct goal difference</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#3a4f63;">Right margin, wrong outcome</p>
+        </td>
+        <td style="padding:12px 16px;text-align:right;white-space:nowrap;">
+          <span style="font-size:17px;font-weight:900;color:#5b9bd5;">+1 pt</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;">
+          <p style="margin:0;font-size:13px;font-weight:700;color:#25d366;">First goalscorer bonus</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#3a4f63;">Predict who scores first in any match</p>
+        </td>
+        <td style="padding:12px 16px;text-align:right;white-space:nowrap;">
+          <span style="font-size:17px;font-weight:900;color:#25d366;">+3 pts</span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Mini League -->
+    <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#ffffff;">🏅 Mini League</p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 10px;font-size:13px;color:#8899aa;line-height:1.7;">
+          Compete against friends in a private Mini League. Create a league and share the
+          invite code, or enter a code from a friend to join theirs.
+        </p>
+        <p style="margin:0;font-size:13px;color:#8899aa;line-height:1.7;">
+          Head to the <strong style="color:#ffffff;">My League</strong> tab to get started.
+        </p>
+      </td></tr>
+    </table>
+
+    <!-- Jules Rimet -->
+    <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#ffffff;">💰 Jules Rimet Jackpot</p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 10px;font-size:13px;color:#8899aa;line-height:1.7;">
+          The Jules Rimet Jackpot is a <strong style="color:#ffffff;">winner-takes-all prize pot</strong>.
+          Pay £10 to enter — whoever finishes top of the leaderboard at the end of the
+          tournament takes home the jackpot.
+        </p>
+        <p style="margin:0;font-size:13px;color:#8899aa;line-height:1.7;">
+          Visit the <strong style="color:#ffffff;">My League</strong> tab and look for the
+          Jules Rimet section to request payment details.
+        </p>
+      </td></tr>
+    </table>
+
+    <!-- WhatsApp -->
+    <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#ffffff;">💬 WhatsApp Group</p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#0f1923;border-radius:12px;margin-bottom:28px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 14px;font-size:13px;color:#8899aa;line-height:1.7;">
+          Join the group to chat with other predictors, discuss matches and enjoy the
+          (inevitable) pain of a wrong prediction.
+        </p>
+        <a href="https://chat.whatsapp.com/GRCIsF3ZDvjJFW6ZV3tWRn?mode=gi_t"
+           style="display:inline-block;background:#25d366;color:#ffffff;font-weight:700;
+                  font-size:13px;padding:10px 22px;border-radius:8px;text-decoration:none;">
+          Join WhatsApp group →
+        </a>
+      </td></tr>
+    </table>
+
+    <!-- CTA -->
+    <p style="margin:0;text-align:center;">
+      <a href="${APP_URL}" style="display:inline-block;background:#c9a227;color:#0f1923;font-weight:700;
+        font-size:14px;padding:13px 32px;border-radius:8px;text-decoration:none;">
+        Start predicting →
+      </a>
+    </p>
+  `);
+}
+
+/**
+ * Send a welcome email to a newly registered user.
+ * Called once from /api/welcome after their profile is created.
+ *
+ * @param {string} userEmail - The new user's email address
+ * @param {string} userName  - Their chosen display name
+ */
+async function sendWelcomeEmail(userEmail, userName) {
+  if (!isConfigured()) return;
+  try {
+    await resend.emails.send({
+      from:    FROM,
+      to:      userEmail,
+      subject: '👋 Welcome to World Cup 2026 Predictor — everything you need to know',
+      html:    welcomeEmailHtml({ name: userName }),
+    });
+    console.log(`[email] Welcome email sent to ${userEmail}`);
+  } catch (err) {
+    console.error('[email] sendWelcomeEmail error:', err.message);
+    throw err;
+  }
+}
+
+module.exports = { sendDailyResultsEmail, sendReminderEmails, sendWeeklyDigest, sendDailyPredictionReminderEmail, sendJulesRimetEnquiry, sendJulesRimetPaymentDeclared, sendJulesRimetInvite, sendWelcomeEmail };

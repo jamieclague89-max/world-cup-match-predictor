@@ -19,6 +19,7 @@ const TYPE_CONFIG = {
   deadline:      { icon: '⏰', colour: 'text-amber-400', bg: 'bg-amber-500/10'  },
   leaderboard:   { icon: '📊', colour: 'text-blue-400',  bg: 'bg-blue-500/10'   },
   jules_payment: { icon: '💰', colour: 'text-green-400', bg: 'bg-green-500/10'  },
+  welcome:       { icon: '👋', colour: 'text-purple-400', bg: 'bg-purple-500/10' },
 };
 
 // ── Single notification row ───────────────────────────────────────────────────

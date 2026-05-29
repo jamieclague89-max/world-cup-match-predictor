@@ -65,6 +65,16 @@ export default function ProfileSetup({ session, onComplete }) {
         );
     }
 
+    // Fire welcome email + notification (best-effort, don't block onComplete)
+    fetch('/api/welcome', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email: session.user.email, name: name.trim() }),
+    }).catch(() => {}); // silently ignore network errors
+
     onComplete(data);
   }
 

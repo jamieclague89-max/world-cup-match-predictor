@@ -502,6 +502,63 @@ app.get('/api/jules-rimet/payment-confirmed', async (req, res) => {
   res.redirect(appUrl);
 });
 
+// ── Welcome email + notification — fired once after profile creation ──────────
+app.post('/api/welcome', async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+  // Verify the caller is a legitimate logged-in user
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Unauthorised' });
+
+  let userId;
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(401).json({ error: 'Unauthorised' });
+    userId = user.id;
+  } catch {
+    return res.status(401).json({ error: 'Unauthorised' });
+  }
+
+  const { email, name } = req.body;
+  if (!email || !name) return res.status(400).json({ error: 'email and name are required' });
+
+  // Guard: only send if no welcome notification already exists for this user
+  // (prevents duplicate sends if the client retries)
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('type', 'welcome')
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return res.json({ message: 'Already sent' });
+  }
+
+  try {
+    // 1. Send welcome email
+    await emailService.sendWelcomeEmail(email, name);
+  } catch (e) {
+    console.error('[welcome] email error:', e.message);
+    // Don't fail the whole request if email fails — still send the notification
+  }
+
+  try {
+    // 2. Send in-app welcome notification
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      type:    'welcome',
+      title:   '👋 Welcome to World Cup 2026 Predictor!',
+      body:    `Here's a quick guide:\n\n📖 Rules — predict every match score before kick-off. Predictions lock at kick-off.\n\n🎯 Scoring — Exact score: +5pts · Correct result: +3pts · Goal difference: +1pt · First goalscorer: +3pts\n\n🏅 Mini League — challenge friends in a private league. Create or join one in the My League tab.\n\n💰 Jules Rimet Jackpot — pay £10 to enter the winner-takes-all prize pot. See My League for details.\n\n💬 WhatsApp — join the group chat via the icon in the header. Good luck! 🏆`,
+      metadata: {},
+    });
+  } catch (e) {
+    console.error('[welcome] notification error:', e.message);
+  }
+
+  res.json({ message: 'Welcome sent' });
+});
+
 app.post('/api/jules-rimet/enquire', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
   const { email, name, userId } = req.body;
