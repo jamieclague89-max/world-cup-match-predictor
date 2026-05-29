@@ -401,21 +401,35 @@ function ResultsManager() {
         </p>
       )}
 
-      {/* Group filter */}
-      <div className="flex gap-1 flex-wrap mb-3">
-        {groups.map(g => (
-          <button
-            key={g}
-            onClick={() => setFilterGroup(g)}
-            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-              filterGroup === g
-                ? 'bg-gold-500 border-gold-500 text-pitch-900 font-bold'
-                : 'border-pitch-600 text-slate-400 hover:border-slate-400'
-            }`}
-          >
-            {g === 'all' ? 'All' : `Group ${g}`}
-          </button>
-        ))}
+      {/* Group filter — dropdown on mobile, pills on desktop */}
+      <div className="mb-3">
+        {/* Mobile: select dropdown */}
+        <select
+          className="sm:hidden w-full bg-pitch-900 border border-pitch-600 rounded-lg px-3 py-2 text-white text-sm focus:border-gold-400 focus:outline-none"
+          value={filterGroup}
+          onChange={e => setFilterGroup(e.target.value)}
+        >
+          {groups.map(g => (
+            <option key={g} value={g}>{g === 'all' ? 'All Groups' : `Group ${g}`}</option>
+          ))}
+        </select>
+
+        {/* Desktop: pill buttons */}
+        <div className="hidden sm:flex gap-1 flex-wrap">
+          {groups.map(g => (
+            <button
+              key={g}
+              onClick={() => setFilterGroup(g)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                filterGroup === g
+                  ? 'bg-gold-500 border-gold-500 text-pitch-900 font-bold'
+                  : 'border-pitch-600 text-slate-400 hover:border-slate-400'
+              }`}
+            >
+              {g === 'all' ? 'All' : `Group ${g}`}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Fixture rows */}
