@@ -329,6 +329,18 @@ export default function App() {
     );
   }
 
+  // Auth not yet resolved — show a blank dark screen to prevent any flash
+  if (session === undefined || (session && profile === undefined)) {
+    return (
+      <div className="min-h-screen bg-pitch-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <img src="/world-cup-2026-trophy.webp" alt="Loading" className="h-14 w-auto opacity-40 animate-pulse" />
+          <p className="text-slate-600 text-sm font-semibold">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!session) {
     if (is404) {
       return <ErrorPage code={404} onGoHome={() => { setAuthView('landing'); navigate_('/'); }} />;
