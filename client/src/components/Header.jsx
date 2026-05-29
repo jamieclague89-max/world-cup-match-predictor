@@ -173,10 +173,8 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
     ...(user.is_admin ? [{ id: 'admin', label: '⚙️ Admin', emoji: '⚙️', short: 'Admin' }] : []),
   ];
 
-  // Bottom nav: max 5 tabs — swap Rules for Admin when admin
-  const bottomTabs = user.is_admin
-    ? allTabs.filter(t => t.id !== 'rules')
-    : allTabs;
+  // Bottom nav: all tabs (Rules + Admin both shown for admins)
+  const bottomTabs = allTabs;
 
   return (
     <>
@@ -244,8 +242,8 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
                 : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            <span className="text-xl leading-none">{tab.emoji}</span>
-            <span className={`text-[10px] leading-none font-semibold ${activeTab === tab.id ? 'text-gold-400' : 'text-slate-500'}`}>
+            <span className="text-lg leading-none">{tab.emoji}</span>
+            <span className={`text-[9px] leading-none font-semibold ${activeTab === tab.id ? 'text-gold-400' : 'text-slate-500'}`}>
               {tab.short}
             </span>
           </button>
