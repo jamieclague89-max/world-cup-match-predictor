@@ -473,20 +473,21 @@ function ResultsManager() {
               }`}
             >
               {/* ── Score row ── */}
-              <div className="flex items-center gap-2">
-                {/* ID */}
-                <span className="text-slate-500 text-xs font-mono w-7 flex-shrink-0">{f.id}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
 
-                {/* Teams */}
-                <div className="flex-1 min-w-0">
-                  <span className="text-white text-xs truncate block">
-                    {f.homeTeam} <span className="text-slate-500">vs</span> {f.awayTeam}
-                  </span>
-                  <span className="text-slate-600 text-xs">{f.date}</span>
+                {/* ID + Teams */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-slate-500 text-xs font-mono w-7 flex-shrink-0">{f.id}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-white text-xs truncate block">
+                      {f.homeTeam} <span className="text-slate-500">vs</span> {f.awayTeam}
+                    </span>
+                    <span className="text-slate-600 text-xs">{f.date}</span>
+                  </div>
                 </div>
 
-                {/* Score inputs */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Score inputs + actions — indented on mobile to sit under the team name */}
+                <div className="flex items-center gap-1.5 pl-9 sm:pl-0">
                   <input
                     type="text" inputMode="numeric"
                     value={edit.home} onChange={e => setEdit(f.id, 'home', e.target.value)}
@@ -500,32 +501,32 @@ function ResultsManager() {
                     placeholder="—"
                     className="w-9 text-center bg-pitch-900 border border-pitch-600 rounded px-1 py-1 text-white text-sm focus:border-gold-400 focus:outline-none"
                   />
-                </div>
 
-                {/* Save button */}
-                <button
-                  onClick={() => saveResult(f)}
-                  disabled={isSaving || (!isDirty && !stored)}
-                  className={`text-xs px-2.5 py-1 rounded-lg flex-shrink-0 font-semibold transition-colors ${
-                    wasSaved
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                      : isDirty
-                      ? 'btn-primary'
-                      : 'text-slate-600 border border-pitch-700 cursor-default'
-                  }`}
-                >
-                  {isSaving ? '…' : wasSaved ? '✓' : isDirty ? 'Save' : stored ? 'Saved' : 'Save'}
-                </button>
-
-                {/* Clear button */}
-                {stored && (
+                  {/* Save button */}
                   <button
-                    onClick={() => clearResult(f.id)}
-                    disabled={isSaving}
-                    className="text-xs text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"
-                    title="Clear result"
-                  >✕</button>
-                )}
+                    onClick={() => saveResult(f)}
+                    disabled={isSaving || (!isDirty && !stored)}
+                    className={`text-xs px-2.5 py-1 rounded-lg flex-shrink-0 font-semibold transition-colors ${
+                      wasSaved
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : isDirty
+                        ? 'btn-primary'
+                        : 'text-slate-600 border border-pitch-700 cursor-default'
+                    }`}
+                  >
+                    {isSaving ? '…' : wasSaved ? '✓' : isDirty ? 'Save' : stored ? 'Saved' : 'Save'}
+                  </button>
+
+                  {/* Clear button */}
+                  {stored && (
+                    <button
+                      onClick={() => clearResult(f.id)}
+                      disabled={isSaving}
+                      className="text-xs text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"
+                      title="Clear result"
+                    >✕</button>
+                  )}
+                </div>
               </div>
 
               {/* ── First goalscorer — step 1: pick team, step 2: pick player ── */}
