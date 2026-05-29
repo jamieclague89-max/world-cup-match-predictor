@@ -668,33 +668,35 @@ export default function LeagueManager({ user, predictions, userEmail }) {
     }
     return (
       <div className="animate-fade-in mt-6">
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => navigate('/league')} className="text-slate-400 hover:text-white text-sm transition-colors">
+        <div className="mb-4">
+          <button onClick={() => navigate('/league')} className="text-slate-400 hover:text-white text-sm transition-colors mb-2 block">
             ← Back
           </button>
-          <h2 className="text-white font-black text-xl flex-1">{activeLeague?.name}</h2>
-          {isOwner && (
-            <span className="text-xs bg-gold-500/20 text-gold-400 border border-gold-500/30 rounded-full px-2 py-0.5 font-semibold">
-              Owner
-            </span>
-          )}
-          {isOwner ? (
-            <button
-              onClick={deleteLeague}
-              disabled={loading}
-              className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-300/50 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
-            >
-              Delete League
-            </button>
-          ) : (
-            <button
-              onClick={leaveLeague}
-              disabled={loading}
-              className="text-xs text-slate-400 hover:text-red-300 border border-slate-600 hover:border-red-300/50 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
-            >
-              Leave
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            <h2 className="text-white font-black text-xl flex-1">{activeLeague?.name}</h2>
+            {isOwner && (
+              <span className="text-xs bg-gold-500/20 text-gold-400 border border-gold-500/30 rounded-full px-2 py-0.5 font-semibold">
+                Owner
+              </span>
+            )}
+            {isOwner ? (
+              <button
+                onClick={deleteLeague}
+                disabled={loading}
+                className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-300/50 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
+              >
+                Delete League
+              </button>
+            ) : (
+              <button
+                onClick={leaveLeague}
+                disabled={loading}
+                className="text-xs text-slate-400 hover:text-red-300 border border-slate-600 hover:border-red-300/50 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
+              >
+                Leave
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="card">
