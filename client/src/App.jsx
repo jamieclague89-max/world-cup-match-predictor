@@ -348,10 +348,10 @@ export default function App() {
       return <ErrorPage code={404} onGoHome={() => navigate_('/')} />;
     }
     if (pathSeg === 'signin') {
-      return <AuthPage defaultMode="signin" onBack={() => navigate_('/')} />;
+      return <AuthPage key="signin" defaultMode="signin" onBack={() => navigate_('/')} />;
     }
     if (pathSeg === 'signup') {
-      return <AuthPage defaultMode="signup" onBack={() => navigate_('/')} />;
+      return <AuthPage key="signup" defaultMode="signup" onBack={() => navigate_('/')} />;
     }
     return (
       <LandingPage
