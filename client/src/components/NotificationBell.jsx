@@ -22,7 +22,7 @@ const TYPE_CONFIG = {
 };
 
 // ── Single notification row ───────────────────────────────────────────────────
-function NotificationRow({ notification, onRead, onNavigate }) {
+function NotificationRow({ notification, onRead, onDelete, onNavigate }) {
   const cfg = TYPE_CONFIG[notification.type] || TYPE_CONFIG.result;
 
   function handleClick() {
@@ -30,35 +30,58 @@ function NotificationRow({ notification, onRead, onNavigate }) {
     onNavigate();
   }
 
+  function handleDelete(e) {
+    e.stopPropagation();
+    onDelete(notification.id);
+  }
+
   return (
-    <button
-      onClick={handleClick}
-      className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors
+    <div
+      className={`group relative flex items-start gap-3 px-4 py-3 transition-colors
                   hover:bg-pitch-700/60 border-b border-pitch-700 last:border-0
                   ${notification.read ? 'opacity-60' : ''}`}
     >
-      {/* Unread dot */}
-      <div className="flex-shrink-0 mt-1 w-2 h-2 rounded-full transition-colors"
-           style={{ background: notification.read ? 'transparent' : '#f59e0b' }} />
+      {/* Clickable area */}
+      <button
+        onClick={handleClick}
+        className="flex items-start gap-3 flex-1 min-w-0 text-left"
+      >
+        {/* Unread dot */}
+        <div className="flex-shrink-0 mt-1 w-2 h-2 rounded-full transition-colors"
+             style={{ background: notification.read ? 'transparent' : '#f59e0b' }} />
 
-      {/* Type icon */}
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${cfg.bg}`}>
-        {cfg.icon}
-      </div>
+        {/* Type icon */}
+        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${cfg.bg}`}>
+          {cfg.icon}
+        </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className={`text-xs font-bold leading-snug ${notification.read ? 'text-slate-400' : 'text-white'}`}>
-          {notification.title}
-        </p>
-        <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">
-          {notification.body}
-        </p>
-        <p className="text-[10px] text-slate-600 mt-1">
-          {timeAgo(notification.created_at)}
-        </p>
-      </div>
-    </button>
+        {/* Content */}
+        <div className="flex-1 min-w-0 pr-6">
+          <p className={`text-xs font-bold leading-snug ${notification.read ? 'text-slate-400' : 'text-white'}`}>
+            {notification.title}
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">
+            {notification.body}
+          </p>
+          <p className="text-[10px] text-slate-600 mt-1">
+            {timeAgo(notification.created_at)}
+          </p>
+        </div>
+      </button>
+
+      {/* Delete button — appears on hover */}
+      <button
+        onClick={handleDelete}
+        title="Delete notification"
+        className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity
+                   w-6 h-6 flex items-center justify-center rounded-md
+                   text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
@@ -67,7 +90,7 @@ export default function NotificationBell({ userId, setActiveTab }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
-  const { notifications, unreadCount, loading, markAsRead, markAllRead } =
+  const { notifications, unreadCount, loading, markAsRead, markAllRead, deleteNotification, clearAll } =
     useNotifications(userId);
 
   // Close on outside click
@@ -136,14 +159,26 @@ export default function NotificationBell({ userId, setActiveTab }) {
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                Mark all read
-              </button>
-            )}
+
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllRead}
+                  className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                  title="Clear all notifications"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Body — scrollable */}
@@ -166,6 +201,7 @@ export default function NotificationBell({ userId, setActiveTab }) {
                   key={n.id}
                   notification={n}
                   onRead={markAsRead}
+                  onDelete={deleteNotification}
                   onNavigate={goToNotificationsPage}
                 />
               ))

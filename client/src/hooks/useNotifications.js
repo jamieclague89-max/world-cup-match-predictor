@@ -74,5 +74,24 @@ export function useNotifications(userId) {
       .eq('read', false);
   }, [userId]);
 
-  return { notifications, unreadCount, loading, markAsRead, markAllRead };
+  // ── Delete a single notification ─────────────────────────────────────────
+  const deleteNotification = useCallback(async (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+  }, [userId]);
+
+  // ── Clear all notifications ──────────────────────────────────────────────
+  const clearAll = useCallback(async () => {
+    setNotifications([]);
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId);
+  }, [userId]);
+
+  return { notifications, unreadCount, loading, markAsRead, markAllRead, deleteNotification, clearAll };
 }
