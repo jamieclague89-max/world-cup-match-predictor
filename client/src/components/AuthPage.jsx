@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 function GoogleIcon() {
@@ -17,7 +18,11 @@ const inputClass =
   'placeholder-slate-500 focus:border-gold-400 focus:outline-none transition-colors';
 
 export default function AuthPage({ defaultMode = 'signin', onBack }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState(defaultMode);
+
+  function goSignIn() { navigate('/signin'); }
+  function goSignUp() { navigate('/signup'); }
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -134,7 +139,7 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
         </div>
         <div className="relative w-full max-w-md animate-fade-in">
           <button
-            onClick={() => { setMode('signin'); setError(''); }}
+            onClick={() => { goSignIn(); setError(''); }}
             className="text-slate-500 hover:text-slate-300 text-sm mb-6 flex items-center gap-1.5 transition-colors"
           >
             ← Back to sign in
@@ -246,7 +251,7 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => { setMode(tab.id); clearError(); }}
+                onClick={() => { (tab.id === 'signup' ? goSignUp() : goSignIn()); clearError(); }}
                 className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
                   mode === tab.id
                     ? 'bg-pitch-700 text-white shadow-sm'
@@ -386,13 +391,13 @@ export default function AuthPage({ defaultMode = 'signin', onBack }) {
         <p className="text-center text-slate-500 text-sm mt-5">
           {mode === 'signin' ? (
             <>No account?{' '}
-              <button onClick={() => { setMode('signup'); clearError(); }} className="text-gold-400 hover:underline">
+              <button onClick={() => { goSignUp(); clearError(); }} className="text-gold-400 hover:underline">
                 Sign up free →
               </button>
             </>
           ) : (
             <>Already have an account?{' '}
-              <button onClick={() => { setMode('signin'); clearError(); }} className="text-gold-400 hover:underline">
+              <button onClick={() => { goSignIn(); clearError(); }} className="text-gold-400 hover:underline">
                 Sign in
               </button>
             </>
