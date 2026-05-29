@@ -24,6 +24,7 @@ import BackToTop        from './components/BackToTop';
 import PreferencesPage  from './components/PreferencesPage';
 import SettingsPage        from './components/SettingsPage';
 import ResetPasswordPage   from './components/ResetPasswordPage';
+import ErrorPage           from './components/ErrorPage';
 
 // ── Default preferences ───────────────────────────────────────────────────────
 const DEFAULT_PREFS = {
@@ -117,6 +118,7 @@ export default function App() {
   // Derive the active tab from the URL path segment
   const VALID_TABS = ['predictions', 'results', 'leaderboard', 'league', 'rules', 'admin', 'preferences', 'settings'];
   const pathSeg    = location.pathname.split('/')[1] || '';
+  const is404      = pathSeg !== '' && !VALID_TABS.includes(pathSeg);
   const activeTab  = VALID_TABS.includes(pathSeg) ? pathSeg : 'predictions';
   function setActiveTab(tab) { navigate_('/' + tab); }
 
@@ -328,6 +330,9 @@ export default function App() {
   }
 
   if (!session) {
+    if (is404) {
+      return <ErrorPage code={404} onGoHome={() => { setAuthView('landing'); navigate_('/'); }} />;
+    }
     if (authView === 'auth') {
       return (
         <AuthPage
@@ -357,6 +362,11 @@ export default function App() {
     );
   }
 
+  // 404 — unknown path (logged-in users only; logged-out handled below)
+  if (is404 && profile) {
+    return <ErrorPage code={404} onGoHome={() => setActiveTab('predictions')} />;
+  }
+
   return (
     <div className="min-h-screen bg-pitch-900">
       <Toaster
@@ -382,6 +392,7 @@ export default function App() {
         onLogout={handleLogout}
         theme={theme}
         onToggleTheme={toggleTheme}
+        onLogoClick={() => setActiveTab('predictions')}
       />
       <BackToTop />
       <main className="max-w-5xl mx-auto px-4 pb-16">
@@ -457,7 +468,7 @@ export default function App() {
         {activeTab === 'league'      && <LeagueManager user={profile} predictions={predictions} userEmail={session.user.email} />}
         {activeTab === 'rules'       && <RulesPage />}
         {activeTab === 'leaderboard' && <Leaderboard user={profile} />}
-        {activeTab === 'admin'       && profile.is_admin && <AdminPage />}
+        {activeTab === 'admin'       && (profile.is_admin ? <AdminPage /> : <ErrorPage code={403} onGoHome={() => setActiveTab('predictions')} />)}
         {activeTab === 'preferences' && (
           <PreferencesPage
             prefs={userPrefs}

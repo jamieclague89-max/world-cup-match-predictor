@@ -163,7 +163,7 @@ function UserMenu({ user, onLogout, setActiveTab }) {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-export default function Header({ user, activeTab, setActiveTab, onLogout, theme, onToggleTheme, userId }) {
+export default function Header({ user, activeTab, setActiveTab, onLogout, theme, onToggleTheme, userId, onLogoClick }) {
   const tabs = [
     { id: 'predictions', label: '🔮 Predictions' },
     { id: 'results',     label: '📊 My Results' },
@@ -179,13 +179,17 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
 
         {/* Top bar */}
         <div className="flex items-center justify-between py-3">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={onLogoClick}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none"
+            aria-label="Go to home"
+          >
             <img src={trophyImg} alt="World Cup Trophy" className="h-9 w-auto" />
-            <div>
+            <div className="text-left">
               <h1 className="text-white font-black text-base leading-none">World Cup 2026</h1>
               <p className="text-gold-400 text-xs font-semibold">Match Predictor</p>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-1">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
