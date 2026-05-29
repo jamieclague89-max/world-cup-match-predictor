@@ -1176,7 +1176,7 @@ async function sendJulesRimetInvite(emails, leagueCode) {
 // ── Template: Welcome email ───────────────────────────────────────────────────
 function welcomeEmailHtml({ name }) {
   return baseTemplate('Welcome to World Cup 2026 Predictor! 🏆', `
-    <p style="margin:0 0 24px;font-size:16px;color:#8899aa;">Hi ${name},</p>
+    <p style="margin:0 0 24px;font-size:16px;color:#8899aa;">${name === 'there' ? 'Hi there —' : `Hi ${name},`}</p>
 
     <!-- Hero -->
     <table width="100%" cellpadding="0" cellspacing="0"

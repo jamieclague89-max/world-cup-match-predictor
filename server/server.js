@@ -519,8 +519,10 @@ app.post('/api/welcome', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 
-  const { email, name } = req.body;
-  if (!email || !name) return res.status(400).json({ error: 'email and name are required' });
+  const { email, name: rawName } = req.body;
+  if (!email) return res.status(400).json({ error: 'email is required' });
+  // Name is optional at this stage — user may not have completed ProfileSetup yet
+  const name = rawName?.trim() || 'there';
 
   // Guard: only send if no welcome notification already exists for this user
   // (prevents duplicate sends if the client retries)
