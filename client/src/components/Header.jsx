@@ -35,21 +35,12 @@ function ThemeToggle({ theme, onToggle }) {
 // ── User dropdown menu ────────────────────────────────────────────────────────
 function UserMenu({ user, onLogout, setActiveTab }) {
   const [open, setOpen] = useState(false);
-  const menuRef   = useRef(null);
-  const leaveTimer = useRef(null);
+  const menuRef = useRef(null);
 
   // Initials avatar
   const initials = user?.name
     ? user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : '?';
-
-  function openMenu()  {
-    clearTimeout(leaveTimer.current);
-    setOpen(true);
-  }
-  function startClose() {
-    leaveTimer.current = setTimeout(() => setOpen(false), 120);
-  }
 
   // Close on outside click
   useEffect(() => {
@@ -71,8 +62,6 @@ function UserMenu({ user, onLogout, setActiveTab }) {
     <div
       ref={menuRef}
       className="relative"
-      onMouseEnter={openMenu}
-      onMouseLeave={startClose}
     >
       {/* ── Trigger button ── */}
       <button
@@ -107,8 +96,6 @@ function UserMenu({ user, onLogout, setActiveTab }) {
         <div
           className="absolute right-0 top-full mt-2 w-52 bg-pitch-800 border border-pitch-600
                      rounded-xl shadow-2xl py-1 z-[60]"
-          onMouseEnter={openMenu}
-          onMouseLeave={startClose}
         >
           {/* User info header */}
           <div className="flex items-center gap-3 px-3 py-2.5 border-b border-pitch-700">
