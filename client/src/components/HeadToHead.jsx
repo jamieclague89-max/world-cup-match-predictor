@@ -98,8 +98,10 @@ function MatchRow({ fixture, myPred, theirPred, result }) {
               <div className={`text-xs font-black mt-0.5 ${mine.points > 0 ? 'text-gold-400' : 'text-slate-600'}`}>
                 {mine.points > 0 ? `+${mine.points}` : '0'} pts
               </div>
-              {mine.scorerHit && (
-                <div className="text-xs text-gold-500 mt-0.5">⚽ scorer +3</div>
+              {myPred.scorer && (
+                <div className={`text-xs mt-0.5 ${mine.scorerHit ? 'text-gold-500 font-semibold' : 'text-slate-500'}`}>
+                  ⚽ {myPred.scorer}{mine.scorerHit ? ' +3' : ''}
+                </div>
               )}
             </>
           ) : (
@@ -136,8 +138,10 @@ function MatchRow({ fixture, myPred, theirPred, result }) {
               <div className={`text-xs font-black mt-0.5 ${theirs.points > 0 ? 'text-gold-400' : 'text-slate-600'}`}>
                 {theirs.points > 0 ? `+${theirs.points}` : '0'} pts
               </div>
-              {theirs.scorerHit && (
-                <div className="text-xs text-gold-500 mt-0.5">⚽ scorer +3</div>
+              {theirPred.scorer && (
+                <div className={`text-xs mt-0.5 ${theirs.scorerHit ? 'text-gold-500 font-semibold' : 'text-slate-500'}`}>
+                  ⚽ {theirPred.scorer}{theirs.scorerHit ? ' +3' : ''}
+                </div>
               )}
             </>
           ) : (
