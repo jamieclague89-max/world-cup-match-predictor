@@ -17,6 +17,7 @@ async function getAuthHeaders() {
   };
 }
 const GROUPS_LIST = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+const POS_ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 
 const VENUES = [
   { label: 'BMO Field, Toronto, Canada',                        stadium: 'BMO Field',               city: 'Toronto, ON',         hostCountry: 'Canada'  },
@@ -445,8 +446,8 @@ function ResultsManager() {
           const isSaving = saving === f.id;
           const wasSaved = saved[f.id];
 
-          const homeSquad    = (SQUADS[f.homeTeam] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
-          const awaySquad    = (SQUADS[f.awayTeam] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+          const homeSquad    = (SQUADS[f.homeTeam] || []).slice().sort((a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]);
+          const awaySquad    = (SQUADS[f.awayTeam] || []).slice().sort((a, b) => POS_ORDER[a.pos] - POS_ORDER[b.pos]);
           const scorerTeam   = scorerTeams[f.id] || '';
           const activeSquad  = scorerTeam === 'home' ? homeSquad : scorerTeam === 'away' ? awaySquad : [];
 
