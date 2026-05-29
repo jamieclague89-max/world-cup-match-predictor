@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useSEO } from './hooks/useSEO';
 import { FIXTURES } from './data/wc2026';
 import LandingPage    from './components/LandingPage';
 import AuthPage       from './components/AuthPage';
@@ -121,6 +122,9 @@ export default function App() {
   const is404      = pathSeg !== '' && !VALID_TABS.includes(pathSeg);
   const activeTab  = VALID_TABS.includes(pathSeg) ? pathSeg : 'predictions';
   function setActiveTab(tab) { navigate_('/' + tab); }
+
+  // ── SEO: update <title> and meta tags per page ──────────────────────────────
+  useSEO(activeTab);
 
   const [authView, setAuthView] = useState('landing');
   const [authMode, setAuthMode] = useState('signin');
