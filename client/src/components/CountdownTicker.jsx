@@ -88,9 +88,15 @@ export default function CountdownTicker({ fixtures }) {
 
       {/* Static label badge */}
       <div className={`flex-shrink-0 h-full flex items-center px-3 ${labelClass}`}>
-        <span className="text-xs font-bold uppercase tracking-wide whitespace-nowrap">
-          {label}
-        </span>
+        {(isFirstEver && days > 3) ? (
+          <span className="text-xs font-bold uppercase tracking-wide whitespace-nowrap">
+            🏆 <span className="hidden sm:inline">Tournament </span>starts in
+          </span>
+        ) : (
+          <span className="text-xs font-bold uppercase tracking-wide whitespace-nowrap">
+            {label}
+          </span>
+        )}
       </div>
 
       {/* Scrolling ticker — pauses on hover so users can read it */}
