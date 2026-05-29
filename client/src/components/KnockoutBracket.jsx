@@ -197,7 +197,7 @@ export default function KnockoutBracket() {
       <div className="card mb-5 flex gap-3 items-start border-amber-700/40 bg-amber-900/10">
         <span className="text-xl mt-0.5 flex-shrink-0">🔒</span>
         <div>
-          <p className="text-amber-300 font-bold text-sm">Bracket unlocks from 28 June</p>
+          <p className="text-black font-bold text-sm">Bracket unlocks from 28 June</p>
           <p className="text-slate-400 text-xs mt-0.5 leading-snug">
             Teams qualify after the group stage ends (25–29 Jun). The bracket fills in
             automatically as results are confirmed. Scroll right to see later rounds →
