@@ -1562,20 +1562,22 @@ export default function AdminPage() {
     <div className="animate-fade-in mt-6">
 
       {/* ── Admin tab bar ─────────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-pitch-800 border border-pitch-700 rounded-xl p-1 mb-6">
-        {ADMIN_TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setAdminTab(tab.id)}
-            className={`flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
-              adminTab === tab.id
-                ? 'bg-pitch-700 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="bg-pitch-800 border border-pitch-700 rounded-xl p-1 mb-6 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex gap-1 w-max sm:w-full">
+          {ADMIN_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setAdminTab(tab.id)}
+              className={`whitespace-nowrap sm:flex-1 py-2 px-3 sm:px-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
+                adminTab === tab.id
+                  ? 'bg-pitch-700 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Results tab ───────────────────────────────────────────────────── */}
