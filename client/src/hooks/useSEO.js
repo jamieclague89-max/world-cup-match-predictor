@@ -4,6 +4,14 @@ const SITE = 'World Cup 2026 Predictor';
 const BASE_URL = 'https://www.playworldcup26.com';
 
 const PAGE_META = {
+  signin: {
+    title: `Sign In | ${SITE}`,
+    description: 'Sign in to your World Cup 2026 Predictor account to manage your predictions and league standings.',
+  },
+  signup: {
+    title: `Create Account | ${SITE}`,
+    description: 'Create a free account and start predicting scores for every World Cup 2026 match.',
+  },
   predictions: {
     title: `Make Your Predictions | ${SITE}`,
     description: 'Pick your scores for every World Cup 2026 group stage and knockout match. Earn points for correct results, goal differences, and exact scorelines.',

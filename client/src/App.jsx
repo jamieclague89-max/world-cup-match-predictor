@@ -117,17 +117,15 @@ export default function App() {
   const location     = useLocation();
 
   // Derive the active tab from the URL path segment
-  const VALID_TABS = ['predictions', 'results', 'leaderboard', 'league', 'rules', 'admin', 'preferences', 'settings'];
-  const pathSeg    = location.pathname.split('/')[1] || '';
-  const is404      = pathSeg !== '' && !VALID_TABS.includes(pathSeg);
-  const activeTab  = VALID_TABS.includes(pathSeg) ? pathSeg : 'predictions';
+  const VALID_TABS  = ['predictions', 'results', 'leaderboard', 'league', 'rules', 'admin', 'preferences', 'settings'];
+  const AUTH_ROUTES = ['signin', 'signup'];
+  const pathSeg     = location.pathname.split('/')[1] || '';
+  const is404       = pathSeg !== '' && !VALID_TABS.includes(pathSeg) && !AUTH_ROUTES.includes(pathSeg);
+  const activeTab   = VALID_TABS.includes(pathSeg) ? pathSeg : 'predictions';
   function setActiveTab(tab) { navigate_('/' + tab); }
 
   // ── SEO: update <title> and meta tags per page ──────────────────────────────
   useSEO(activeTab);
-
-  const [authView, setAuthView] = useState('landing');
-  const [authMode, setAuthMode] = useState('signin');
   const [predView, setPredView]             = useState('group');
   const [unpredictedOnly, setUnpredictedOnly] = useState(false);
 
@@ -321,7 +319,7 @@ export default function App() {
     await supabase.auth.signOut();
     setProfile(null);
     setPredictions({});
-    setAuthView('landing');
+    navigate_('/');
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -347,24 +345,28 @@ export default function App() {
 
   if (!session) {
     if (is404) {
-      return <ErrorPage code={404} onGoHome={() => { setAuthView('landing'); navigate_('/'); }} />;
+      return <ErrorPage code={404} onGoHome={() => navigate_('/')} />;
     }
-    if (authView === 'auth') {
-      return (
-        <AuthPage
-          defaultMode={authMode}
-          onBack={() => setAuthView('landing')}
-        />
-      );
+    if (pathSeg === 'signin') {
+      return <AuthPage defaultMode="signin" onBack={() => navigate_('/')} />;
+    }
+    if (pathSeg === 'signup') {
+      return <AuthPage defaultMode="signup" onBack={() => navigate_('/')} />;
     }
     return (
       <LandingPage
-        onSignIn={() => { setAuthMode('signin'); setAuthView('auth'); }}
-        onSignUp={() => { setAuthMode('signup'); setAuthView('auth'); }}
+        onSignIn={() => navigate_('/signin')}
+        onSignUp={() => navigate_('/signup')}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
     );
+  }
+
+  // Logged-in user hitting /signin or /signup — redirect to app
+  if (AUTH_ROUTES.includes(pathSeg)) {
+    navigate_('/predictions', { replace: true });
+    return null;
   }
 
   if (!profile) {
