@@ -261,23 +261,40 @@ function StandingsTable({ standings, currentUser, isOwner, onSelectOpponent, onR
 // ── Main component ────────────────────────────────────────────────────────────
 export default function LeagueManager({ user, predictions, userEmail }) {
   // Array of leagues the user belongs to: [{ code, name, createdBy? }]
-  const [savedLeagues, setSavedLeagues] = useLocalStorage('wc2026_leagues', []);
+  // Key is user-specific so leagues don't bleed across accounts on the same browser.
+  const [savedLeagues, setSavedLeagues] = useLocalStorage(`wc2026_leagues_${user.id}`, []);
 
-  // Migrate old single-league format (wc2026_league → wc2026_leagues)
+  // Migrate old league data into this user's key on first login
   useEffect(() => {
-    const old = localStorage.getItem('wc2026_league');
-    if (!old) return;
-    try {
-      const parsed = JSON.parse(old);
-      if (parsed?.code) {
-        setSavedLeagues(prev =>
-          prev.some(l => l.code === parsed.code)
-            ? prev
-            : [...prev, { code: parsed.code, name: parsed.name }]
-        );
-      }
-    } catch {}
-    localStorage.removeItem('wc2026_league');
+    // wc2026_league (v1 single-league) → user-specific key
+    const v1 = localStorage.getItem('wc2026_league');
+    if (v1) {
+      try {
+        const parsed = JSON.parse(v1);
+        if (parsed?.code) {
+          setSavedLeagues(prev =>
+            prev.some(l => l.code === parsed.code)
+              ? prev
+              : [...prev, { code: parsed.code, name: parsed.name }]
+          );
+        }
+      } catch {}
+      localStorage.removeItem('wc2026_league');
+    }
+
+    // wc2026_leagues (v2 shared key) → user-specific key
+    // Only migrate if the user-specific key is still empty (first login after this change)
+    const v2 = localStorage.getItem('wc2026_leagues');
+    const userKey = `wc2026_leagues_${user.id}`;
+    if (v2 && !localStorage.getItem(userKey)) {
+      try {
+        const parsed = JSON.parse(v2);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSavedLeagues(parsed);
+        }
+      } catch {}
+      // Leave v2 key in place — other users on this browser may still need it for their own migration
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
