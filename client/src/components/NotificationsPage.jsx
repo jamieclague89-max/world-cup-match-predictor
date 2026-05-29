@@ -1,4 +1,60 @@
-import { useNotifications } from '../hooks/useNotifications';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+
+const PAGE_SIZE = 50;
+
+// ── Dedicated hook for the full notifications page ────────────────────────────
+// Uses a unique channel key so it doesn't conflict with NotificationBell's
+// existing subscription to the same user's notifications.
+function useAllNotifications(userId) {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading]             = useState(true);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+
+    async function load() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (!error) setNotifications(data || []);
+      setLoading(false);
+    }
+
+    load();
+
+    // Realtime — unique channel key so it doesn't clash with NotificationBell
+    const channel = supabase
+      .channel(`notifications-page:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        payload => setNotifications(prev => [payload.new, ...prev].slice(0, PAGE_SIZE))
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
+
+  const markAsRead = useCallback(async (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await supabase.from('notifications').update({ read: true }).eq('id', id).eq('user_id', userId);
+  }, [userId]);
+
+  const markAllRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
+  }, [userId]);
+
+  return { notifications, unreadCount, loading, markAsRead, markAllRead };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -14,23 +70,19 @@ function timeAgo(dateStr) {
 }
 
 const TYPE_CONFIG = {
-  result:        { icon: '🏆', label: 'Match result'    },
-  deadline:      { icon: '⏰', label: 'Deadline'        },
-  leaderboard:   { icon: '📊', label: 'Leaderboard'     },
-  jules_payment: { icon: '💰', label: 'Jules Rimet'     },
+  result:        { icon: '🏆', label: 'Match result' },
+  deadline:      { icon: '⏰', label: 'Deadline'     },
+  leaderboard:   { icon: '📊', label: 'Leaderboard'  },
+  jules_payment: { icon: '💰', label: 'Jules Rimet'  },
 };
 
 // ── Single notification card ──────────────────────────────────────────────────
 function NotificationCard({ notification, onRead }) {
   const cfg = TYPE_CONFIG[notification.type] || { icon: '🔔', label: 'Notification' };
 
-  function handleClick() {
-    if (!notification.read) onRead(notification.id);
-  }
-
   return (
     <button
-      onClick={handleClick}
+      onClick={() => { if (!notification.read) onRead(notification.id); }}
       className={`w-full text-left rounded-xl border transition-colors p-4
                   ${notification.read
                     ? 'bg-pitch-800/50 border-pitch-700/50 opacity-70'
@@ -58,12 +110,9 @@ function NotificationCard({ notification, onRead }) {
               {timeAgo(notification.created_at)}
             </span>
           </div>
-
-          {/* Full body — no line-clamp */}
           <p className="text-sm text-slate-400 leading-relaxed">
             {notification.body}
           </p>
-
           <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
             {cfg.label}
           </span>
@@ -76,7 +125,7 @@ function NotificationCard({ notification, onRead }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function NotificationsPage({ userId }) {
   const { notifications, unreadCount, loading, markAsRead, markAllRead } =
-    useNotifications(userId);
+    useAllNotifications(userId);
 
   return (
     <div className="animate-fade-in mt-6 max-w-2xl mx-auto">
@@ -114,11 +163,7 @@ export default function NotificationsPage({ userId }) {
       ) : (
         <div className="space-y-3">
           {notifications.map(n => (
-            <NotificationCard
-              key={n.id}
-              notification={n}
-              onRead={markAsRead}
-            />
+            <NotificationCard key={n.id} notification={n} onRead={markAsRead} />
           ))}
         </div>
       )}
