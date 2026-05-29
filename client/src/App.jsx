@@ -27,7 +27,6 @@ import SettingsPage        from './components/SettingsPage';
 import ResetPasswordPage   from './components/ResetPasswordPage';
 import ErrorPage           from './components/ErrorPage';
 import NotificationsPage   from './components/NotificationsPage';
-import WhatsAppFAB         from './components/WhatsAppFAB';
 
 // ── Default preferences ───────────────────────────────────────────────────────
 const DEFAULT_PREFS = {
@@ -415,7 +414,6 @@ export default function App() {
         onLogoClick={() => setActiveTab('predictions')}
       />
       <BackToTop />
-      <WhatsAppFAB />
       <main className="max-w-5xl mx-auto px-4 pb-28 sm:pb-16">
         {activeTab === 'predictions' && (
           <>
