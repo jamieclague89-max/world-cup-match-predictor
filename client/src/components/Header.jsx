@@ -223,14 +223,14 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
+            className={`flex-1 flex flex-col items-center py-3 gap-1 transition-colors ${
               activeTab === tab.id
                 ? 'text-gold-400'
                 : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            <span className="text-lg leading-none">{tab.emoji}</span>
-            <span className={`text-[9px] leading-none font-semibold ${activeTab === tab.id ? 'text-gold-400' : 'text-slate-500'}`}>
+            <span className="text-xl leading-none">{tab.emoji}</span>
+            <span className={`text-[10px] leading-none font-semibold ${activeTab === tab.id ? 'text-gold-400' : 'text-slate-500'}`}>
               {tab.short}
             </span>
           </button>

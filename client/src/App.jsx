@@ -413,7 +413,7 @@ export default function App() {
         onLogoClick={() => setActiveTab('predictions')}
       />
       <BackToTop />
-      <main className="max-w-5xl mx-auto px-4 pb-24 sm:pb-16">
+      <main className="max-w-5xl mx-auto px-4 pb-28 sm:pb-16">
         {activeTab === 'predictions' && (
           <>
             <CountdownTicker fixtures={fixtures} />
