@@ -164,16 +164,22 @@ function UserMenu({ user, onLogout, setActiveTab }) {
 
 // ── Header ────────────────────────────────────────────────────────────────────
 export default function Header({ user, activeTab, setActiveTab, onLogout, theme, onToggleTheme, userId, onLogoClick }) {
-  const tabs = [
-    { id: 'predictions', label: '🔮 Predictions' },
-    { id: 'results',     label: '📊 My Results' },
-    { id: 'leaderboard', label: '🌍 Leaderboard' },
-    { id: 'league',      label: '🏅 My League' },
-    { id: 'rules',       label: '📖 Rules' },
-    ...(user.is_admin ? [{ id: 'admin', label: '⚙️ Admin' }] : []),
+  const allTabs = [
+    { id: 'predictions', label: '🔮 Predictions', emoji: '🔮', short: 'Predict'  },
+    { id: 'results',     label: '📊 My Results',  emoji: '📊', short: 'Results'  },
+    { id: 'leaderboard', label: '🌍 Leaderboard', emoji: '🌍', short: 'Leaders'  },
+    { id: 'league',      label: '🏅 My League',   emoji: '🏅', short: 'League'   },
+    { id: 'rules',       label: '📖 Rules',        emoji: '📖', short: 'Rules'    },
+    ...(user.is_admin ? [{ id: 'admin', label: '⚙️ Admin', emoji: '⚙️', short: 'Admin' }] : []),
   ];
 
+  // Bottom nav: max 5 tabs — swap Rules for Admin when admin
+  const bottomTabs = user.is_admin
+    ? allTabs.filter(t => t.id !== 'rules')
+    : allTabs;
+
   return (
+    <>
     <header className="bg-pitch-800 border-b border-pitch-700 sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4">
 
@@ -202,9 +208,9 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
           </div>
         </div>
 
-        {/* Tab navigation */}
-        <nav className="flex gap-1 pb-0 -mb-px">
-          {tabs.map(tab => (
+        {/* Tab navigation — desktop only */}
+        <nav className="hidden sm:flex gap-1 pb-0 -mb-px">
+          {allTabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -221,5 +227,31 @@ export default function Header({ user, activeTab, setActiveTab, onLogout, theme,
 
       </div>
     </header>
+
+    {/* ── Bottom tab bar — mobile only ──────────────────────────────────── */}
+    <nav
+      className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-pitch-800 border-t border-pitch-700"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="flex">
+        {bottomTabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
+              activeTab === tab.id
+                ? 'text-gold-400'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <span className="text-xl leading-none">{tab.emoji}</span>
+            <span className={`text-[10px] leading-none font-semibold ${activeTab === tab.id ? 'text-gold-400' : 'text-slate-500'}`}>
+              {tab.short}
+            </span>
+          </button>
+        ))}
+      </div>
+    </nav>
+    </>
   );
 }
