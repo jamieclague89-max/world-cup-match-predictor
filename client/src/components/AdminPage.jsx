@@ -1391,11 +1391,13 @@ function AnalyticsPanel() {
     );
   }
 
-  const timeseries  = traffic?.timeseries?.data || [];
-  const maxViews    = timeseries.length ? Math.max(...timeseries.map(d => d.total ?? 0), 1) : 1;
-  const totalViews  = timeseries.reduce((s, d) => s + (d.total    ?? 0), 0);
-  const totalVisits = timeseries.reduce((s, d) => s + (d.devices  ?? 0), 0);
-  const topPages    = traffic?.pages?.data || [];
+  const rawTimeseries = traffic?.timeseries?.data;
+  const timeseries    = Array.isArray(rawTimeseries) ? rawTimeseries : [];
+  const maxViews      = timeseries.length ? Math.max(...timeseries.map(d => d.total ?? 0), 1) : 1;
+  const totalViews    = timeseries.reduce((s, d) => s + (d.total   ?? 0), 0);
+  const totalVisits   = timeseries.reduce((s, d) => s + (d.devices ?? 0), 0);
+  const rawTopPages   = traffic?.pages?.data;
+  const topPages      = Array.isArray(rawTopPages) ? rawTopPages : [];
 
   const statCard = (label, value, color) => (
     <div key={label} className="bg-pitch-800 border border-pitch-700 rounded-xl p-3">
