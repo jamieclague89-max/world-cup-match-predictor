@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { FIXTURES, TEAMS } from '../data/wc2026';
 import { SQUADS } from '../data/squads';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -1506,6 +1506,8 @@ const ADMIN_TABS = [
 
 export default function AdminPage() {
   const [adminTab, setAdminTab] = useState('results');
+  const [showTabFade, setShowTabFade] = useState(true);
+  const tabScrollRef = useRef(null);
   const [overrides, setOverrides] = useLocalStorage('wc2026_fixture_overrides', {});
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
@@ -1562,22 +1564,39 @@ export default function AdminPage() {
     <div className="animate-fade-in mt-6">
 
       {/* ── Admin tab bar ─────────────────────────────────────────────────── */}
-      <div className="bg-pitch-800 border border-pitch-700 rounded-xl p-1 mb-6 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="flex gap-1 w-max sm:w-full">
-          {ADMIN_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setAdminTab(tab.id)}
-              className={`whitespace-nowrap sm:flex-1 py-2 px-3 sm:px-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
-                adminTab === tab.id
-                  ? 'bg-pitch-700 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <div className="relative mb-6">
+        <div
+          ref={tabScrollRef}
+          className="bg-pitch-800 border border-pitch-700 rounded-xl p-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          onScroll={e => {
+            const el = e.currentTarget;
+            setShowTabFade(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+          }}
+        >
+          <div className="flex gap-1 w-max sm:w-full">
+            {ADMIN_TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setAdminTab(tab.id)}
+                className={`whitespace-nowrap sm:flex-1 py-2 px-3 sm:px-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
+                  adminTab === tab.id
+                    ? 'bg-pitch-700 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Right-fade — mobile only, disappears once scrolled to the last tab */}
+        {showTabFade && (
+          <div
+            className="sm:hidden absolute top-0 right-0 bottom-0 w-10 rounded-r-xl pointer-events-none"
+            style={{ background: 'linear-gradient(to right, transparent, rgb(var(--pitch-800)))' }}
+          />
+        )}
       </div>
 
       {/* ── Results tab ───────────────────────────────────────────────────── */}
