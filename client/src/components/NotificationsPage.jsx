@@ -104,11 +104,11 @@ export default function NotificationsPage({ userId }) {
       {loading ? (
         <div className="text-center py-16 text-slate-500 text-sm">Loading…</div>
       ) : notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <span className="text-5xl mb-4">🔔</span>
-          <p className="text-slate-300 font-semibold">You're all caught up!</p>
-          <p className="text-slate-500 text-sm mt-1">
-            Notifications about results, deadlines and league updates will appear here.
+        <div className="bg-pitch-800 border border-pitch-700 rounded-xl flex flex-col items-center justify-center py-16 text-center px-6">
+          <span className="text-6xl mb-4">🔔</span>
+          <p className="text-white font-bold text-lg mb-1">No notifications yet</p>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Match results, prediction deadlines, and league updates will appear here when they arrive.
           </p>
         </div>
       ) : (
