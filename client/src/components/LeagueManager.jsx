@@ -18,6 +18,10 @@ async function apiFetch(path, options) {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+// Jules Rimet Jackpot leagues are invite-only (admin-controlled).
+// We identify them by name so the share/invite UI is hidden.
+const isJulesRimet = (name = '') => name.toLowerCase().includes('jules rimet');
+
 // ── League share sheet ────────────────────────────────────────────────────────
 function ShareSheet({ code, leagueName }) {
   const [copied, setCopied] = useState(false);
@@ -674,12 +678,14 @@ export default function LeagueManager({ user, predictions, userEmail }) {
           </button>
         </div>
 
-        {/* Invite more friends */}
-        <div className="card mt-4">
-          <p className="text-xs text-slate-400 font-semibold mb-1">Invite more friends</p>
-          <p className="font-mono text-2xl font-black text-gold-400 tracking-[0.2em] mb-2">{activeCode}</p>
-          <ShareSheet code={activeCode} leagueName={activeLeague?.name || ''} />
-        </div>
+        {/* Invite more friends — hidden for Jules Rimet (admin-invite only) */}
+        {!isJulesRimet(activeLeague?.name) && (
+          <div className="card mt-4">
+            <p className="text-xs text-slate-400 font-semibold mb-1">Invite more friends</p>
+            <p className="font-mono text-2xl font-black text-gold-400 tracking-[0.2em] mb-2">{activeCode}</p>
+            <ShareSheet code={activeCode} leagueName={activeLeague?.name || ''} />
+          </div>
+        )}
 
         <p className="text-slate-500 text-xs text-center mt-3">
           Standings update automatically as official match results are confirmed.
@@ -726,17 +732,25 @@ export default function LeagueManager({ user, predictions, userEmail }) {
             )}
           </div>
 
-          {/* Invite code + share */}
-          <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600">
-            <p className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wide">Invite code</p>
-            <span className="font-mono text-4xl font-black text-gold-400 tracking-[0.25em]">
-              {activeLeague.code}
-            </span>
-            <p className="text-slate-500 text-xs mt-2">
-              Friends enter this code under My League → Join League.
-            </p>
-            <ShareSheet code={activeLeague.code} leagueName={activeLeague.name} />
-          </div>
+          {/* Invite code + share — hidden for Jules Rimet (admin-invite only) */}
+          {isJulesRimet(activeLeague.name) ? (
+            <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600/50">
+              <p className="text-slate-500 text-xs">
+                🔒 This is a private, invite-only league. Membership is managed by the admin.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600">
+              <p className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wide">Invite code</p>
+              <span className="font-mono text-4xl font-black text-gold-400 tracking-[0.25em]">
+                {activeLeague.code}
+              </span>
+              <p className="text-slate-500 text-xs mt-2">
+                Friends enter this code under My League → Join League.
+              </p>
+              <ShareSheet code={activeLeague.code} leagueName={activeLeague.name} />
+            </div>
+          )}
         </div>
 
         <button
@@ -764,7 +778,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
         <div className="card">
           <h2 className="text-xl font-black text-white mb-1">Create a League</h2>
           <p className="text-slate-400 text-sm mb-5">
-            Give your league a name — you'll get a 6-character invite code to share
+            Give your league a name — you'll get an 8-character invite code to share
           </p>
           <div className="space-y-4">
             <div>
@@ -802,7 +816,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
         <div className="card">
           <h2 className="text-xl font-black text-white mb-1">Join a League</h2>
           <p className="text-slate-400 text-sm mb-5">
-            Enter the 6-character invite code from your friend
+            Enter the 8-character invite code from your friend
           </p>
           <div className="space-y-4">
             <div>
