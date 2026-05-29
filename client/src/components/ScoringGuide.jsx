@@ -21,11 +21,12 @@ export default function ScoringGuide({ sidebar = false }) {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-pitch-700/50 transition-colors"
       >
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
             ⭐ Scoring
           </span>
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Inline rule chips — hidden on mobile to keep the row compact */}
+          <div className="hidden sm:flex items-center gap-3 flex-wrap">
             {[...SCORE_RULES.filter(r => r.pts > 0), SCORER_RULE].map(r => (
               <span key={r.label} className="flex items-center gap-1.5 text-xs">
                 <span className={`font-black text-sm ${r.color}`}>{r.pts}</span>
@@ -35,6 +36,12 @@ export default function ScoringGuide({ sidebar = false }) {
               </span>
             ))}
           </div>
+          {/* Mobile: show a brief hint when collapsed */}
+          {!open && (
+            <span className="sm:hidden text-xs text-slate-500">
+              Tap to see points breakdown
+            </span>
+          )}
         </div>
         <span className={`text-slate-500 text-xs ml-3 flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
           ▼
