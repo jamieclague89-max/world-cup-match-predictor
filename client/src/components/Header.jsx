@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import NotificationBell from './NotificationBell';
-import trophyImg from '../assets/world-cup-2026-trophy.webp';
+const trophyImg = '/world-cup-2026-trophy.webp';
 
 // ── Theme toggle switch ───────────────────────────────────────────────────────
 function ThemeToggle({ theme, onToggle }) {

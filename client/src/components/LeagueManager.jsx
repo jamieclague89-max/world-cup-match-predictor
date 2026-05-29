@@ -143,6 +143,8 @@ function ShareSheet({ code, leagueName }) {
   );
 }
 
+const TROPHY_IMG = '/world-cup-2026-trophy.webp';
+
 // ── Jules Rimet Jackpot promo tile ───────────────────────────────────────────
 function JulesRimetTile({ onOpen }) {
   return (
@@ -153,7 +155,7 @@ function JulesRimetTile({ onOpen }) {
                  hover:border-gold-500/70 hover:from-gold-500/15 transition-all group"
     >
       <div className="px-4 py-4 flex items-center gap-4">
-        <div className="text-3xl flex-shrink-0">🏆</div>
+        <img src={TROPHY_IMG} alt="World Cup Trophy" className="h-10 w-auto flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-white font-black text-base group-hover:text-gold-400 transition-colors">
@@ -528,7 +530,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
         <div className="rounded-2xl bg-gradient-to-br from-gold-500/20 via-pitch-800 to-pitch-900
                         border border-gold-500/40 overflow-hidden mb-4">
           <div className="bg-gradient-to-r from-gold-600/30 to-gold-500/10 px-6 py-5 text-center border-b border-gold-500/20">
-            <div className="text-5xl mb-2">🏆</div>
+            <img src={TROPHY_IMG} alt="World Cup Trophy" className="h-16 w-auto mx-auto mb-2" />
             <h2 className="text-2xl font-black text-white">Jules Rimet Jackpot</h2>
             <div className="inline-flex items-center gap-1.5 mt-2 bg-gold-500/20 border border-gold-500/40
                             rounded-full px-3 py-1">
@@ -927,7 +929,10 @@ export default function LeagueManager({ user, predictions, userEmail }) {
             ))}
           </div>
 
-          <JulesRimetTile onOpen={() => navigate('/league/jules-rimet')} />
+          {/* Hide JR tile if user has already joined the Jules Rimet league */}
+          {!savedLeagues.some(l => isJulesRimet(l.name)) && (
+            <JulesRimetTile onOpen={() => navigate('/league/jules-rimet')} />
+          )}
 
           {/* Always-visible create + join buttons */}
           <div className="grid grid-cols-2 gap-3">

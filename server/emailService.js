@@ -320,8 +320,9 @@ function julesRimetPaymentHtml({ email, name }) {
     <table width="100%" cellpadding="0" cellspacing="0"
       style="background:#c9a227;border-radius:12px;margin-bottom:24px;">
       <tr><td style="padding:24px;text-align:center;">
-        <p style="margin:0;font-size:40px;">🏆</p>
-        <p style="margin:10px 0 0;font-size:22px;font-weight:900;color:#0f1923;">
+        <img src="${APP_URL}/world-cup-2026-trophy.png" alt="World Cup Trophy"
+          style="height:80px;width:auto;display:block;margin:0 auto 10px;" />
+        <p style="margin:0;font-size:22px;font-weight:900;color:#0f1923;">
           Jules Rimet Jackpot
         </p>
         <p style="margin:6px 0 0;font-size:14px;color:#6b4a00;font-weight:600;">
@@ -1144,7 +1145,7 @@ async function sendJulesRimetInvite(emails, leagueCode) {
   if (!emails?.length) throw new Error('At least one email address is required');
   if (!leagueCode?.trim()) throw new Error('League code is required');
 
-  const code = leagueCode.trim().toUpperCase();
+  const code = leagueCode.trim();
   const html = julesRimetInviteHtml({ leagueCode: code });
 
   const sends = emails.map(email =>
