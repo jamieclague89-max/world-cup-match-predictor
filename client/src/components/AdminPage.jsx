@@ -1,4 +1,26 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+
+// ── Error boundary — catches render errors so panels go to an error card
+// rather than leaving a blank page ────────────────────────────────────────────
+class PanelErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="card text-red-400 text-sm py-6 text-center space-y-2">
+          <p className="font-semibold">⚠️ This panel failed to render</p>
+          <p className="text-red-400/70 text-xs font-mono">{this.state.error.message}</p>
+          <button
+            onClick={() => this.setState({ error: null })}
+            className="text-xs text-slate-400 hover:text-white underline"
+          >Retry</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { FIXTURES, TEAMS } from '../data/wc2026';
 import { SQUADS } from '../data/squads';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -1352,11 +1374,25 @@ function AnalyticsPanel() {
       <div className="card text-red-400 text-sm py-4 text-center">{error}</div>
     );
   }
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="card text-red-400 text-sm py-4 text-center">No data returned from server.</div>
+    );
+  }
 
   const { app, traffic } = data;
+
+  if (!app || !traffic) {
+    return (
+      <div className="card text-red-400 text-sm py-4 text-center">
+        Unexpected response from analytics API.
+        {data.error && <span className="block text-xs mt-1 font-mono text-red-400/70">{data.error}</span>}
+      </div>
+    );
+  }
+
   const timeseries  = traffic?.timeseries?.data || [];
-  const maxViews    = Math.max(...timeseries.map(d => d.total ?? 0), 1);
+  const maxViews    = timeseries.length ? Math.max(...timeseries.map(d => d.total ?? 0), 1) : 1;
   const totalViews  = timeseries.reduce((s, d) => s + (d.total    ?? 0), 0);
   const totalVisits = timeseries.reduce((s, d) => s + (d.devices  ?? 0), 0);
   const topPages    = traffic?.pages?.data || [];
@@ -1633,7 +1669,11 @@ export default function AdminPage() {
       {adminTab === 'emails' && <EmailPanel />}
 
       {/* ── Analytics tab ─────────────────────────────────────────────────── */}
-      {adminTab === 'analytics' && <AnalyticsPanel />}
+      {adminTab === 'analytics' && (
+        <PanelErrorBoundary key="analytics">
+          <AnalyticsPanel />
+        </PanelErrorBoundary>
+      )}
 
       {/* ── Fixtures tab ──────────────────────────────────────────────────── */}
       {adminTab === 'fixtures' && (
