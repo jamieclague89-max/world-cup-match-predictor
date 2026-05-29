@@ -440,7 +440,7 @@ export default function App() {
             {predView === 'group' && (
               <div className="lg:grid lg:grid-cols-5 lg:gap-6 lg:items-start">
                 <div className="lg:col-span-3">
-                  <div className="lg:hidden">
+                  <div className="hidden sm:block lg:hidden">
                     <NudgeBanner
                       predictions={predictions}
                       fixtures={fixtures}
