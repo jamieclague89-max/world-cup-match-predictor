@@ -504,11 +504,26 @@ app.get('/api/jules-rimet/payment-confirmed', async (req, res) => {
 
 app.post('/api/jules-rimet/enquire', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-  const { email, name } = req.body;
+  const { email, name, userId } = req.body;
   if (!email || !email.includes('@')) return res.status(400).json({ error: 'A valid email address is required' });
 
   try {
     await emailService.sendJulesRimetEnquiry(supabase, email.trim().toLowerCase(), name?.trim() || '');
+
+    // Also send an in-app notification to the user with the key payment details
+    if (userId) {
+      const displayName = name?.trim() || email.trim();
+      const { error: notifErr } = await supabase.from('notifications').insert({
+        user_id:  userId,
+        type:     'jules_payment',
+        title:    '🏆 Jules Rimet Jackpot — payment details',
+        body:     `Pay £10 via Revolut · Account 54170109 · Sort code 04-00-75 · Reference: ${displayName} · Deadline: 18 Jun 2026. Once paid, click Confirm Payment in the email.`,
+        metadata: { email: email.trim().toLowerCase(), name: displayName },
+      });
+      if (notifErr) console.error('[jules-rimet] user notification insert error:', notifErr.message);
+      else console.log(`[jules-rimet] In-app payment details notification sent to user ${userId}`);
+    }
+
     res.json({ message: 'Details sent! Check your inbox.' });
   } catch (e) {
     console.error('[email] Jules Rimet enquiry error:', e.message);

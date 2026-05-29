@@ -516,7 +516,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
       const res = await fetch('/api/jules-rimet/enquire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail, name: user.name }),
+        body: JSON.stringify({ email: userEmail, name: user.name, userId: user.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send');
