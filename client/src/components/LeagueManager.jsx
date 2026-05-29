@@ -396,7 +396,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
   function openLeague(code) {
     setStandings(null);
     setLeagueInfo(null);
-    navigate('/league/' + code);
+    navigate('/league/' + code + '/standings');
   }
 
   // ── Create league ────────────────────────────────────────────────────────────
@@ -453,13 +453,12 @@ export default function LeagueManager({ user, predictions, userEmail }) {
       const data = await apiFetch(`/leagues/${activeCode}/standings`);
       setStandings(data.standings);
       setLeagueInfo(data.league); // includes created_by
-      navigate(`/league/${activeCode}/standings`);
     } catch (e) {
       toast.error(e.message);
     } finally {
       setLoading(false);
     }
-  }, [activeCode, navigate]);
+  }, [activeCode]);
 
   // ── Leave league (self-remove) ───────────────────────────────────────────────
   async function leaveLeague() {
@@ -670,14 +669,31 @@ export default function LeagueManager({ user, predictions, userEmail }) {
     return (
       <div className="animate-fade-in mt-6">
         <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => navigate(`/league/${activeCode}`)} className="text-slate-400 hover:text-white text-sm transition-colors">
+          <button onClick={() => navigate('/league')} className="text-slate-400 hover:text-white text-sm transition-colors">
             ← Back
           </button>
-          <h2 className="text-white font-black text-xl">{activeLeague?.name}</h2>
+          <h2 className="text-white font-black text-xl flex-1">{activeLeague?.name}</h2>
           {isOwner && (
             <span className="text-xs bg-gold-500/20 text-gold-400 border border-gold-500/30 rounded-full px-2 py-0.5 font-semibold">
               Owner
             </span>
+          )}
+          {isOwner ? (
+            <button
+              onClick={deleteLeague}
+              disabled={loading}
+              className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-300/50 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
+            >
+              Delete League
+            </button>
+          ) : (
+            <button
+              onClick={leaveLeague}
+              disabled={loading}
+              className="text-xs text-slate-400 hover:text-red-300 border border-slate-600 hover:border-red-300/50 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
+            >
+              Leave
+            </button>
           )}
         </div>
 
@@ -713,78 +729,10 @@ export default function LeagueManager({ user, predictions, userEmail }) {
     );
   }
 
-  // League home view (single league selected)
+  // League home view — redirect straight to standings (no intermediate screen)
   if (view === 'home' && activeCode) {
-    return (
-      <div className="animate-fade-in mt-6 space-y-4">
-        {/* Back to list */}
-        <button onClick={() => navigate('/league')}
-          className="text-slate-400 hover:text-white text-sm transition-colors"
-        >
-          ← My Leagues
-        </button>
-
-        <div className="card">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">
-                {isOwner ? 'Your League' : 'Joined League'}
-              </p>
-              <h2 className="text-2xl font-black text-white">{activeLeague.name}</h2>
-            </div>
-            {/* Owner: delete. Member: leave. */}
-            {isOwner ? (
-              <button
-                onClick={deleteLeague}
-                disabled={loading}
-                className="text-xs text-red-500 hover:text-red-400 transition-colors mt-1 disabled:opacity-50 border border-red-500/30 hover:border-red-400/50 rounded-lg px-2.5 py-1.5 font-semibold"
-              >
-                🗑 Delete League
-              </button>
-            ) : (
-              <button
-                onClick={leaveLeague}
-                className="text-xs text-slate-500 hover:text-red-400 transition-colors mt-1"
-              >
-                Leave
-              </button>
-            )}
-          </div>
-
-          {/* Invite code + share — hidden for Jules Rimet (admin-invite only) */}
-          {isJulesRimet(activeLeague.name) ? (
-            <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600/50">
-              <p className="text-slate-500 text-xs">
-                🔒 This is a private, invite-only league. Membership is managed by the admin.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-4 bg-pitch-900 rounded-xl p-4 border border-pitch-600">
-              <p className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wide">Invite code</p>
-              <span className="font-mono text-4xl font-black text-gold-400 tracking-[0.25em]">
-                {activeLeague.code}
-              </span>
-              <p className="text-slate-500 text-xs mt-2">
-                Friends enter this code under My League → Join League.
-              </p>
-              <ShareSheet code={activeLeague.code} leagueName={activeLeague.name} />
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={loadStandings}
-          disabled={loading}
-          className="btn-primary w-full py-3 text-sm font-bold disabled:opacity-50"
-        >
-          {loading ? 'Loading…' : '🏆 View League Standings'}
-        </button>
-
-        <p className="text-slate-600 text-xs text-center">
-          Standings update as official results come in — no manual sync needed.
-        </p>
-      </div>
-    );
+    navigate(`/league/${activeCode}/standings`, { replace: true });
+    return null;
   }
 
   // Create league form
