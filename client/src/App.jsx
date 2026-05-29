@@ -118,7 +118,7 @@ export default function App() {
   const location     = useLocation();
 
   // Derive the active tab from the URL path segment
-  const VALID_TABS  = ['predictions', 'results', 'leaderboard', 'league', 'rules', 'admin', 'preferences', 'settings'];
+  const VALID_TABS  = ['predictions', 'results', 'leaderboard', 'league', 'rules', 'admin', 'preferences', 'settings', 'notifications'];
   const AUTH_ROUTES = ['signin', 'signup'];
   const pathSeg     = location.pathname.split('/')[1] || '';
   const is404       = pathSeg !== '' && !VALID_TABS.includes(pathSeg) && !AUTH_ROUTES.includes(pathSeg);
