@@ -36,7 +36,7 @@ export default function ResetPasswordPage({ onDone }) {
 
       <div className="relative w-full max-w-md animate-fade-in">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🏆</div>
+          <img src="/world-cup-2026-trophy.webp" alt="World Cup Trophy" className="h-16 w-auto mx-auto mb-3" />
           <h1 className="text-2xl font-black text-white">World Cup 2026</h1>
           <p className="text-gold-400 text-sm font-semibold mt-0.5">Match Predictor</p>
         </div>

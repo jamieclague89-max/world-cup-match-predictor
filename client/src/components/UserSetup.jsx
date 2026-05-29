@@ -69,7 +69,7 @@ export default function UserSetup({ onComplete }) {
 
       <div className="relative w-full max-w-md animate-fade-in">
         <div className="text-center mb-8">
-          <div className="text-6xl mb-3">🏆</div>
+          <img src="/world-cup-2026-trophy.webp" alt="World Cup Trophy" className="h-16 w-auto mx-auto mb-3" />
           <h1 className="text-3xl font-black text-white tracking-tight">World Cup 2026</h1>
           <p className="text-gold-400 font-bold text-lg mt-1">Match Predictor</p>
           <p className="text-slate-400 text-sm mt-2">USA · Canada · Mexico</p>
