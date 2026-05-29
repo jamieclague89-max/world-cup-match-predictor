@@ -273,19 +273,17 @@ export default function HeadToHead({ leagueCode, opponent, myPredictions, myName
   return (
     <div className="animate-fade-in mt-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="mb-4">
         <button
           onClick={onBack}
-          className="text-slate-400 hover:text-white text-sm transition-colors"
+          className="text-slate-400 hover:text-white text-sm transition-colors mb-2 block"
         >
           ← Back
         </button>
-        <div>
-          <h2 className="text-white font-black text-xl">Head-to-Head</h2>
-          <p className="text-slate-400 text-xs mt-0.5">
-            You vs {opponent.name} · completed matches only
-          </p>
-        </div>
+        <h2 className="text-white font-black text-xl">Head-to-Head</h2>
+        <p className="text-slate-400 text-xs mt-0.5">
+          You vs {opponent.name} · completed matches only
+        </p>
       </div>
 
       {/* Column labels */}
