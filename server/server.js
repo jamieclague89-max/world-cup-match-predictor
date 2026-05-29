@@ -467,14 +467,38 @@ app.get('/api/jules-rimet/payment-confirmed', async (req, res) => {
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
 
   if (email) {
+    // 1. Send admin email
     try {
       await emailService.sendJulesRimetPaymentDeclared(supabase, email, name || '');
     } catch (e) {
-      console.error('[jules-rimet] payment confirmed notification error:', e.message);
+      console.error('[jules-rimet] payment confirmed email error:', e.message);
+    }
+
+    // 2. Send in-app notification to all admin users
+    try {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('is_admin', true);
+
+      if (admins && admins.length > 0) {
+        const rows = admins.map(admin => ({
+          user_id: admin.id,
+          type:    'jules_payment',
+          title:   '💰 Jules Rimet payment declared',
+          body:    `${name || email} has confirmed their payment and is awaiting league access.`,
+          metadata: { email, name: name || '' },
+        }));
+        const { error } = await supabase.from('notifications').insert(rows);
+        if (error) console.error('[jules-rimet] admin notification insert error:', error.message);
+        else console.log(`[jules-rimet] In-app notification sent to ${rows.length} admin(s) for ${email}`);
+      }
+    } catch (e) {
+      console.error('[jules-rimet] admin in-app notification error:', e.message);
     }
   }
 
-  // Redirect the user back to the app regardless of email outcome
+  // Redirect the user back to the app regardless of outcome
   res.redirect(appUrl);
 });
 
