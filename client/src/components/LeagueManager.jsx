@@ -289,7 +289,7 @@ export default function LeagueManager({ user, predictions, userEmail }) {
   const SPECIAL_SEGS = ['create', 'join', 'jules-rimet'];
   const subParts = location.pathname.replace(/^\/league\/?/, '').split('/').filter(Boolean);
   const activeCode = subParts[0] && !SPECIAL_SEGS.includes(subParts[0].toLowerCase())
-    ? subParts[0].toUpperCase()
+    ? subParts[0]
     : null;
   const view = subParts.length === 0              ? 'list'
     : subParts[0] === 'create'                    ? 'create'
@@ -398,8 +398,8 @@ export default function LeagueManager({ user, predictions, userEmail }) {
 
   // ── Join league ──────────────────────────────────────────────────────────────
   async function joinLeague() {
-    const code = joinCode.trim().toUpperCase();
-    if (code.length !== 6) { toast.error('Enter a valid 6-character code'); return; }
+    const code = joinCode.trim();
+    if (code.length !== 8) { toast.error('Enter a valid 8-character code'); return; }
     if (savedLeagues.some(l => l.code === code)) {
       toast.error('You\'re already in that league');
       setJoinCode('');
@@ -812,14 +812,14 @@ export default function LeagueManager({ user, predictions, userEmail }) {
               <input
                 type="text"
                 value={joinCode}
-                onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+                onChange={e => setJoinCode(e.target.value.slice(0, 8))}
                 onKeyDown={e => e.key === 'Enter' && joinLeague()}
-                placeholder="AB3X7K"
+                placeholder="e.g. aB3-xK_2"
                 autoFocus
                 className="w-full bg-pitch-900 border-2 border-pitch-600 rounded-lg px-4 py-2.5 text-white
                            placeholder-slate-500 focus:border-gold-400 focus:outline-none transition-colors
-                           font-mono text-xl tracking-[0.2em] uppercase text-center"
-                maxLength={6}
+                           font-mono text-xl tracking-[0.2em] text-center"
+                maxLength={8}
               />
             </div>
             <button onClick={joinLeague} disabled={loading} className="btn-primary w-full py-3 font-bold disabled:opacity-50">

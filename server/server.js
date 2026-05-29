@@ -8,9 +8,36 @@ const deadlineReminder  = require('./deadlineReminder');
 const { sendResultNotifications, sendDailyDigestNotifications } = require('./notifications');
 
 // ── League code generator ─────────────────────────────────────────────────────
+// 8 characters, guaranteed mix of lowercase, uppercase, digit, and symbol.
+// Character sets exclude look-alike characters (0/O/o, 1/I/i/l) and use
+// only URL-safe symbols so codes work cleanly in path segments.
 function generateCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const lower   = 'abcdefghjkmnpqrstuvwxyz'; // no i, l, o
+  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I, L, O
+  const digits  = '23456789';                 // no 0, 1
+  const symbols = '!@-_';                     // URL-safe symbols
+  const all     = lower + upper + digits + symbols;
+
+  const pick = src => src[Math.floor(Math.random() * src.length)];
+
+  // Guarantee at least one of each type, then fill remaining 4 from the full set
+  const chars = [
+    pick(lower),
+    pick(upper),
+    pick(digits),
+    pick(symbols),
+    pick(all),
+    pick(all),
+    pick(all),
+    pick(all),
+  ];
+
+  // Fisher-Yates shuffle
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
 }
 
 const app = express();
@@ -86,7 +113,7 @@ app.post('/api/leagues', async (req, res) => {
 // ── Get league metadata (name, created_by) ───────────────────────────────────
 app.get('/api/leagues/:code', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-  const code = req.params.code.toUpperCase();
+  const code = req.params.code;
   const { data: league, error } = await supabase
     .from('leagues')
     .select('code, name, created_by')
@@ -102,7 +129,7 @@ app.post('/api/leagues/:code/join', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
   const { userId } = req.body;
-  const code = req.params.code.toUpperCase();
+  const code = req.params.code;
   if (!userId) return res.status(400).json({ error: 'userId required' });
 
   // Check league exists
@@ -180,7 +207,7 @@ app.delete('/api/leagues/:code/members/:memberId', async (req, res) => {
 app.get('/api/leagues/:code/standings', async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
-  const code = req.params.code.toUpperCase();
+  const code = req.params.code;
 
   // Verify league exists
   const { data: league, error: leagueErr } = await supabase
