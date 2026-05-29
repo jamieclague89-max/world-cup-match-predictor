@@ -184,19 +184,6 @@ export default function App() {
       setProfile(profileData ?? null);
       if (profileData?.is_admin) navigate_('/admin', { replace: true });
 
-      // No profile yet = user just confirmed their email for the first time.
-      // Fire welcome email + notification (best-effort, non-blocking).
-      if (!profileData && session.user.email_confirmed_at) {
-        fetch('/api/welcome', {
-          method:  'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ email: session.user.email, name: '' }),
-        }).catch(() => {});
-      }
-
       if (profileData) {
         // 2. Predictions
         const { data: predRows } = await supabase

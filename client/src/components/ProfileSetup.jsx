@@ -65,6 +65,16 @@ export default function ProfileSetup({ session, onComplete }) {
         );
     }
 
+    // Send welcome email + notification now that we have the display name
+    fetch('/api/welcome', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email: session.user.email, name: name.trim() }),
+    }).catch(() => {});
+
     onComplete(data);
   }
 
