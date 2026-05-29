@@ -47,13 +47,13 @@ export default function LandingPage({ onSignIn, onSignUp, theme = 'dark', onTogg
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <button
               onClick={onSignIn}
-              className="btn-secondary text-sm py-1.5 px-4"
+              className="btn-secondary text-sm py-1.5 px-4 hidden sm:inline-flex"
             >
               Sign in
             </button>
             <button
               onClick={onSignUp}
-              className="btn-primary text-sm py-1.5 px-4"
+              className="btn-primary text-sm py-1.5 px-4 hidden sm:inline-flex"
             >
               Sign up free
             </button>
